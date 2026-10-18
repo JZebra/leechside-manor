@@ -39,6 +39,7 @@ export const CONFIG = {
     maxLeeches: 3,
     patience: 45, // seconds in bed before anyone touches him; then he walks out
     queuePatience: 50, // seconds waiting at the door for a bed
+    turnaround: 2, // seconds for the orderly to bring the next man to a freed bed
     // green band [start, end]; blue (warning) runs from end to faintAt
     types: {
       soldier: { green: [0.55, 0.8], faintAt: 0.92, afterBleed: 1, label: 'Soldier' },
@@ -62,9 +63,11 @@ export const CONFIG = {
       every: 16, // seconds between escape checks, from the 'stubborn' stage
       chance: 0.55,
       minJar: 2, // leeches only escape from a jar with at least this many
-      crawlSpeed: 7, // art px per second
+      crawlSpeed: 8, // art px per second
+      seekPatient: 0.5, // chance an escapee heads for a patient rather than the drain
       latchRange: 10, // art px: an escapee this close to an unattended patient climbs on
     },
+    recycleSeconds: 40, // salted leeches disgorge and go back in the jar (they really did)
   },
 
   machine: {
@@ -86,6 +89,7 @@ export const CONFIG = {
     faint: -10,
     walkedOut: -6,
     leechLost: -2,
+    floorLeech: -1, // each fed leech still on the floor at six
     verdict: { approved: 190, noted: 110 }, // francs at six o'clock
   },
 
@@ -93,5 +97,8 @@ export const CONFIG = {
     speed: 78, // art px per second
     carrying: 0.55, // speed multiplier while carrying a fainted man
     reach: 16, // art px from the doctor's feet to a target's edge
+    pickReach: 14, // art px to a leech on the floor
+    scoop: 5, // fed leeches carried in one handful
+    calmRange: 26, // art px: a nervous man is calmed while the doctor is this close
   },
 } as const;

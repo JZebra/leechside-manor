@@ -70,7 +70,7 @@ export const PALETTE = {
   // Leech Clinic additions: flagstones, copper (kettle), the meter's bright bands
   stone0: '#2f2a27', stone1: '#463f3a', stone2: '#5c544d', stone3: '#766c62',
   copper0: '#5e2f1c', copper1: '#8e4a2a', copper2: '#c07a48',
-  meterGreen: '#5f8a4a', meterBlue: '#4a6aa8',
+  meterGreen: '#5f8a4a', meterBlue: '#4a6aa8', meterGreen1: '#9ccc78', meterBlue1: '#8eb0e6',
 } as const;
 
 export type PaletteKey = keyof typeof PALETTE;
