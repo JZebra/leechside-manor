@@ -3,6 +3,7 @@ import { hex } from '../art/palette';
 import { CONTROLS } from '../data/lines';
 import { sfx, isMuted, setMuted } from '../audio/audio';
 import { fitCamera, text, panel, STAGE } from '../ui/view';
+import { loadBest } from '../ui/best';
 
 export const PLATE_CREDIT =
   'Title plate: C.-J. Traviès, “Encore quatre-vingt-dix sangsues!”, Tableau de Paris, coloured lithograph, c. 1827 — a satire of Broussais. Wellcome Collection, public domain.';
@@ -48,7 +49,9 @@ export class TitleScene extends Phaser.Scene {
     const mute = text(this, x + w, 584, '', { size: 16, color: 'wood3', align: 'right' }).setOrigin(1, 0);
     const showMute = () => mute.setText(isMuted() ? 'Sound off (M)' : 'Sound on (M)');
     showMute();
-    text(this, x, 674, `${PLATE_CREDIT}`, { size: 12, color: 'paper4', wrap: w });
+    const best = loadBest();
+    if (best) text(this, x + w, 470, `Best shift: ${best.money} francs — ${best.verdict.toLowerCase()}`, { size: 17, italic: true, color: 'wood3', align: 'right' }).setOrigin(1, 0.5);
+    text(this, x, 668, `${PLATE_CREDIT} ${FONT_CREDIT}`, { size: 12, color: 'paper4', wrap: w });
 
     const start = () => {
       sfx('page');

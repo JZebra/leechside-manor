@@ -399,7 +399,7 @@ export class WardScene extends Phaser.Scene {
     ay = Math.max(8, ay);
     // don't stack messages on top of each other
     this.recentSays = this.recentSays.filter((s) => this.t - s.t < 0.9);
-    while (this.recentSays.some((s) => Math.abs(s.x - ax) < 40 && Math.abs(s.y - ay) < 7)) ay -= 7;
+    while (this.recentSays.some((s) => Math.abs(s.x - ax) < 40 && Math.abs(s.y - ay) < 9)) ay -= 9;
     this.recentSays.push({ x: ax, y: ay, t: this.t });
     const x = Math.min(STAGE.w - 120, Math.max(120, Math.round(ax) * P));
     const msg = text(this, x, Math.round(ay) * P, str, { size: 18, color: TONE[tone], stroke: 'ink', strokeWidth: 5, align: 'center' })
@@ -740,6 +740,12 @@ export class WardScene extends Phaser.Scene {
         sweat: e.left < 12,
       };
       v.head.setTexture(ensurePatientTexture(this, look)).setCrop(0, 0, 22, 14);
+      // how long he'll wait at the door
+      const ay = 38 + i * 26 + 16;
+      const share = Math.max(0, e.left / CONFIG.patient.queuePatience);
+      const g = this.gMeters;
+      g.fillStyle(hex('ink')).fillRect(5 * P, (ay - 1) * P, 24 * P, 3 * P);
+      g.fillStyle(hex(e.left < 12 ? 'red3' : 'paper2')).fillRect(6 * P, ay * P, Math.round(share * 22) * P, P);
       const kind = e.type === 'soldier' ? '' : `, ${CONFIG.patient.types[e.type].label.toLowerCase()}`;
       const left = e.left < 12 ? '  (leaving!)' : '';
       v.name.setText(`${e.profile.surname}${kind}${left}`).setColor(e.left < 12 ? '#c8483a' : '#ddd6c4');

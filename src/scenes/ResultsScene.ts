@@ -7,6 +7,7 @@ import { OUTCOME_LABEL, VERDICT_REMARK } from '../data/lines';
 import type { Ward } from '../model/ward';
 import { sfx } from '../audio/audio';
 import { fitCamera, text, panel, STAGE } from '../ui/view';
+import { saveBest } from '../ui/best';
 
 const OUTCOME_COLOUR: Record<string, PaletteKey> = {
   green: 'stamp0',
@@ -62,6 +63,7 @@ export class ResultsScene extends Phaser.Scene {
     text(this, 920, 156, lines.join('\n'), { size: 18, lineSpacing: 6 });
     text(this, 920, 372, `Takings: ${shift.money} francs`, { font: 'display', size: 30, color: shift.money >= 0 ? 'ink' : 'red2' });
     const v = CONFIG.score.verdict;
+    if (saveBest({ money: shift.money, verdict: shift.verdict() })) text(this, 1196, 380, 'a new best', { size: 16, italic: true, color: 'red2' }).setOrigin(1, 0);
     text(this, 922, 412, `Approved at ${v.approved} fr · noted at ${v.noted} fr`, { size: 15, italic: true, color: 'wood3' });
 
     // Broussais's stamp, thumped down in steps
