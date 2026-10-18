@@ -1,0 +1,26 @@
+{
+  "name": "leech-clinic",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ludum Dare 60 (Old Tech) — an Overcooked-style leech ward at the Val-de-Grâce, Paris, 1830s. Sister game to Thirty Leeches.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "zip": "npm run build && rm -f leech-clinic-itch.zip && cd dist && zip -qr ../leech-clinic-itch.zip ."
+  },
+  "dependencies": {
+    "@fontsource/eb-garamond": "^5.2.6",
+    "@fontsource/im-fell-english": "^5.2.6",
+    "jsfxr": "^1.4.1",
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.9"
+  }
+}
