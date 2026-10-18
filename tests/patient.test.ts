@@ -100,7 +100,8 @@ describe('Patient', () => {
   it('a nervous conscript left alone faints from fright; company calms him', () => {
     const alone = new Patient('nervous', profile);
     alone.attach({ stubborn: false }); // one leech: he'd survive the blood loss, not the fear
-    const ev = run(alone, 40);
+    const { rise, perLeech } = CONFIG.patient.panic;
+    const ev = run(alone, (1 - perLeech) / rise + 2);
     expect(ev.some((e) => e.kind === 'faint' && e.cause === 'fright')).toBe(true);
     const company = new Patient('nervous', profile);
     company.attach({ stubborn: false });

@@ -38,12 +38,12 @@ export class ResultsScene extends Phaser.Scene {
     const perCol = 13;
     log.slice(0, perCol * 2).forEach((e, i) => {
       const col = Math.floor(i / perCol);
-      const x = 100 + col * 380;
+      const x = 100 + col * 400;
       const y = 156 + (i % perCol) * 30;
-      const kind = e.type === 'soldier' ? '' : ` (${CONFIG.patient.types[e.type].label.toLowerCase()})`;
+      const kind = e.type === 'anaemic' || e.type === 'nervous' ? ` (${e.type})` : ''; // drummers say so in their rank
       text(this, x, y, `${e.profile.rank} ${e.profile.surname}${kind}`, { size: 18 });
-      text(this, x + 250, y, OUTCOME_LABEL[e.outcome] ?? e.outcome, { size: 16, italic: true, color: OUTCOME_COLOUR[e.outcome] ?? 'wood3' });
-      if (e.fee) text(this, x + 350, y, `${e.fee > 0 ? '+' : ''}${e.fee}`, { size: 18, color: e.fee > 0 ? 'ink' : 'red2' }).setOrigin(1, 0);
+      text(this, x + 220, y + 1, OUTCOME_LABEL[e.outcome] ?? e.outcome, { size: 16, italic: true, color: OUTCOME_COLOUR[e.outcome] ?? 'wood3' });
+      if (e.fee) text(this, x + 385, y, `${e.fee > 0 ? '+' : ''}${e.fee}`, { size: 18, color: e.fee > 0 ? 'ink' : 'red2' }).setOrigin(1, 0);
     });
     if (log.length > perCol * 2) text(this, 100, 156 + perCol * 30, `… and ${log.length - perCol * 2} more`, { size: 16, italic: true, color: 'wood3' });
     if (!log.length) text(this, 100, 156, 'Not a man treated.', { size: 20, italic: true });
@@ -59,33 +59,34 @@ export class ResultsScene extends Phaser.Scene {
       `Leeches down the drain: ${ward.lost}`,
       `Fed leeches left on the floor: ${ward.floorAtBell}`,
     ];
-    text(this, 880, 156, lines.join('\n'), { size: 18, lineSpacing: 6 });
-    text(this, 880, 372, `Takings: ${shift.money} francs`, { font: 'display', size: 30, color: shift.money >= 0 ? 'ink' : 'red2' });
+    text(this, 920, 156, lines.join('\n'), { size: 18, lineSpacing: 6 });
+    text(this, 920, 372, `Takings: ${shift.money} francs`, { font: 'display', size: 30, color: shift.money >= 0 ? 'ink' : 'red2' });
     const v = CONFIG.score.verdict;
-    text(this, 882, 412, `Approved at ${v.approved} fr · noted at ${v.noted} fr`, { size: 15, italic: true, color: 'wood3' });
+    text(this, 922, 412, `Approved at ${v.approved} fr · noted at ${v.noted} fr`, { size: 15, italic: true, color: 'wood3' });
 
     // Broussais's stamp, thumped down in steps
     const verdict = shift.verdict();
     const ink: PaletteKey = verdict === 'APPROVED' ? 'stamp0' : 'red2';
-    const stamp = this.add.container(1010, 520);
+    const stamp = this.add.container(1060, 510);
+    const word = text(this, 0, 2, verdict, { font: 'display', size: 44, color: ink }).setOrigin(0.5);
     const sg = this.add.graphics();
-    const sw = 300, sh = 84;
+    const sw = Math.ceil((word.width + 60) / 6) * 6, sh = 84;
     sg.fillStyle(hex(ink)).fillRect(-sw / 2, -sh / 2, sw, sh);
     sg.fillStyle(hex('paper1')).fillRect(-sw / 2 + 6, -sh / 2 + 6, sw - 12, sh - 12);
     sg.fillStyle(hex(ink)).fillRect(-sw / 2 + 12, -sh / 2 + 12, sw - 24, sh - 24);
     sg.fillStyle(hex('paper1')).fillRect(-sw / 2 + 15, -sh / 2 + 15, sw - 30, sh - 30);
     stamp.add(sg);
-    stamp.add(text(this, 0, 2, verdict, { font: 'display', size: 46, color: ink }).setOrigin(0.5));
+    stamp.add(word);
     stamp.setScale(1.6).setVisible(false);
-    text(this, 880, 586, VERDICT_REMARK[verdict], { size: 18, italic: true, wrap: 310, color: 'wood2' });
-    text(this, 880, 650, '— F.-J.-V. Broussais', { size: 16, italic: true, color: 'wood3' }).setVisible(true);
+    text(this, 920, 572, VERDICT_REMARK[verdict], { size: 18, italic: true, wrap: 280, color: 'wood2' });
+    text(this, 1196, 648, '— F.-J.-V. Broussais', { size: 16, italic: true, color: 'wood3' }).setOrigin(1, 0);
 
     this.time.delayedCall(700, () => {
       stamp.setVisible(true);
       this.tweens.add({ targets: stamp, scale: 1, duration: 160, ease: 'Stepped', easeParams: [3], onComplete: () => sfx('stamp') });
     });
 
-    text(this, 640, 662, 'E / Space — work another shift   ·   T — the title page', { font: 'display', size: 22, color: 'red2' }).setOrigin(0.5);
+    text(this, 100, 648, 'E / Space — work another shift   ·   T — the title page', { font: 'display', size: 22, color: 'red2' });
     const kb = this.input.keyboard!;
     const again = () => {
       sfx('page');

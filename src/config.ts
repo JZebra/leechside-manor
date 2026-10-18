@@ -24,7 +24,7 @@ export const CONFIG = {
   arrivals: {
     opening: 2, // patients already waiting at 8:00
     // seconds between arrivals, by stage
-    interval: { basics: 17, frail: 14, stubborn: 13, machine: 12, shortage: 11 } as Record<StageId, number>,
+    interval: { basics: 20, frail: 17, stubborn: 15, machine: 14, shortage: 13 } as Record<StageId, number>,
     // which patient types arrive, by stage (weights)
     mix: {
       basics: { soldier: 1 },
@@ -37,7 +37,7 @@ export const CONFIG = {
 
   patient: {
     maxLeeches: 3,
-    patience: 45, // seconds in bed before anyone touches him; then he walks out
+    patience: 50, // seconds in bed before anyone touches him; then he walks out
     queuePatience: 50, // seconds waiting at the door for a bed
     turnaround: 2, // seconds for the orderly to bring the next man to a freed bed
     // green band [start, end]; blue (warning) runs from end to faintAt
@@ -48,7 +48,7 @@ export const CONFIG = {
       nervous: { green: [0.55, 0.8], faintAt: 0.92, afterBleed: 1, label: 'Nervous conscript' },
     } as Record<PatientType, { green: [number, number]; faintAt: number; afterBleed: number; label: string }>,
     panic: {
-      rise: 0.025, // per second while the doctor is away
+      rise: 0.02, // per second while the doctor is away
       perLeech: 0.18, // a jolt each time a leech goes on
       calm: 0.12, // per second while the doctor stands by him
     },
@@ -57,7 +57,7 @@ export const CONFIG = {
   leech: {
     feedSeconds: 9, // hungry → sated
     extraction: 0.022, // blood per second while feeding (≈0.2 per leech)
-    afterBleed: 0.012, // blood per second per open bite, until lint
+    afterBleed: 0.008, // blood per second per open bite, until lint
     stubbornChance: 0.18, // from the 'stubborn' stage
     escape: {
       every: 16, // seconds between escape checks, from the 'stubborn' stage
@@ -90,7 +90,7 @@ export const CONFIG = {
     walkedOut: -6,
     leechLost: -2,
     floorLeech: -1, // each fed leech still on the floor at six
-    verdict: { approved: 190, noted: 110 }, // francs at six o'clock
+    verdict: { approved: 165, noted: 95 }, // francs at six o'clock (see npm run sim)
   },
 
   doctor: {
@@ -98,6 +98,7 @@ export const CONFIG = {
     carrying: 0.55, // speed multiplier while carrying a fainted man
     reach: 16, // art px from the doctor's feet to a target's edge
     pickReach: 14, // art px to a leech on the floor
+    handful: 3, // hungry leeches carried at once
     scoop: 5, // fed leeches carried in one handful
     calmRange: 26, // art px: a nervous man is calmed while the doctor is this close
   },

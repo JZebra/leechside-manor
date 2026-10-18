@@ -15,7 +15,7 @@ import type { Fail, Verb } from '../data/lines';
 
 export type Hand =
   | null
-  | { kind: 'leech'; stubborn: boolean }
+  | { kind: 'leech'; held: boolean[] } // a handful; each entry: is this one stubborn?
   | { kind: 'used'; count: number }
   | { kind: 'lint' }
   | { kind: 'sugar' }
@@ -159,25 +159,30 @@ export class Ward {
     const pick = CONFIG.doctor.pickReach;
     for (const f of this.floor) {
       const dist = Math.hypot(f.x - x, f.y - y);
-      if (dist <= pick) out.push({ target: { kind: 'used', id: f.id }, dist: dist - 4 });
+      if (dist <= pick) out.push({ target: { kind: 'used', id: f.id }, dist });
     }
     for (const e of this.escapees) {
       const dist = Math.hypot(e.x - x, e.y - y);
-      if (dist <= pick) out.push({ target: { kind: 'escapee', id: e.id }, dist: dist - 6 }); // catching wins ties
+      if (dist <= pick) out.push({ target: { kind: 'escapee', id: e.id }, dist });
     }
     return out.sort((a, b) => a.dist - b.dist);
   }
 
   // The best target: the nearest thing that can be done, else the nearest refusal.
+  // Sweeping the floor yields to anything urgent nearby; catching a runaway comes first.
   target(): { target: Target; check: Check } | null {
-    const near = this.inReach();
+    let best: { target: Target; check: Check; score: number } | null = null;
     let refusal: { target: Target; check: Check } | null = null;
-    for (const { target } of near) {
+    for (const { target, dist } of this.inReach()) {
       const check = this.check(target);
-      if (check.ok) return { target, check };
-      if (!refusal && check.fail !== 'nothing') refusal = { target, check };
+      if (!check.ok) {
+        if (!refusal && check.fail !== 'nothing') refusal = { target, check };
+        continue;
+      }
+      const score = dist + (check.verb === 'scoop' ? 12 : 0) - (check.verb === 'catch' ? 8 : 0);
+      if (!best || score < best.score) best = { target, check, score };
     }
-    return refusal;
+    return best ? { target: best.target, check: best.check } : refusal;
   }
 
   check(t: Target): Check {
@@ -190,13 +195,19 @@ export class Ward {
       if (hand.kind === 'used') return hand.count < CONFIG.doctor.scoop ? ok('scoop') : no('scoopFull');
       return no('handsFull');
     }
-    if (t.kind === 'escapee') return hand ? no('handsFull') : ok('catch');
+    if (t.kind === 'escapee') {
+      if (!hand) return ok('catch');
+      if (hand.kind !== 'leech') return no('handsFull');
+      return hand.held.length < CONFIG.doctor.handful ? ok('catch') : no('handful');
+    }
 
     if (t.kind === 'station') {
       switch (t.id) {
         case 'jar':
-          if (hand?.kind === 'leech') return ok('putBack');
-          if (hand) return no('handsFull');
+          if (hand?.kind === 'leech') {
+            if (hand.held.some((s) => s)) return ok('putBackSulky'); // the stubborn ones go back first
+            if (hand.held.length >= CONFIG.doctor.handful) return no('handful');
+          } else if (hand) return no('handsFull');
           if (this.supply.jar <= 0) return no(this.supply.phase === 'active' ? 'jarShortage' : 'jarEmpty');
           return ok('takeLeech');
         case 'cupboard':
@@ -227,7 +238,7 @@ export class Ward {
     switch (hand.kind) {
       case 'leech':
         if (p.attachedCount >= CONFIG.patient.maxLeeches) return no('full');
-        if (hand.stubborn && !p.prepared) return no('refused');
+        if (biter(hand.held, p.prepared) < 0) return no('refused');
         return ok('apply');
       case 'lint':
         return ok('bandage');
@@ -251,13 +262,25 @@ export class Ward {
     const out: WardEvent[] = [];
     const hand = this.hand;
     switch (check.verb) {
-      case 'takeLeech':
+      case 'takeLeech': {
         this.supply.take();
-        this.hand = { kind: 'leech', stubborn: this.shift.stageReached('stubborn') && this.rng.chance(CONFIG.leech.stubbornChance) };
-        out.push({ kind: 'take', what: 'leech', stubborn: this.hand.stubborn });
+        const stubborn = this.shift.stageReached('stubborn') && this.rng.chance(CONFIG.leech.stubbornChance);
+        if (hand?.kind === 'leech') hand.held.push(stubborn);
+        else this.hand = { kind: 'leech', held: [stubborn] };
+        out.push({ kind: 'take', what: 'leech', stubborn });
         break;
+      }
+      case 'putBackSulky': {
+        const held = (hand as { held: boolean[] }).held;
+        const back = held.filter((s) => s).length;
+        this.supply.give(back);
+        const keep = held.filter((s) => !s);
+        this.hand = keep.length ? { kind: 'leech', held: keep } : null;
+        out.push({ kind: 'putBack', what: 'leech' });
+        break;
+      }
       case 'putBack':
-        if (hand?.kind === 'leech') this.supply.give(1);
+        if (hand?.kind === 'leech') this.supply.give(hand.held.length);
         if (hand?.kind === 'bdello') this.deviceOnStand = true;
         out.push({ kind: 'putBack', what: hand!.kind });
         this.hand = null;
@@ -305,7 +328,8 @@ export class Ward {
       case 'catch': {
         const i = this.escapees.findIndex((e) => t.kind === 'escapee' && e.id === t.id);
         this.escapees.splice(i, 1);
-        this.hand = { kind: 'leech', stubborn: false };
+        if (hand?.kind === 'leech') hand.held.push(false);
+        else this.hand = { kind: 'leech', held: [false] };
         out.push({ kind: 'catch' });
         break;
       }
@@ -326,8 +350,10 @@ export class Ward {
         const bed = this.beds[(t as { bed: number }).bed];
         const p = bed.patient!;
         const slot = p.leeches.indexOf(null);
-        p.attach({ stubborn: (hand as { stubborn: boolean }).stubborn });
-        this.hand = null;
+        const held = (hand as { held: boolean[] }).held;
+        const [stubborn] = held.splice(biter(held, p.prepared), 1);
+        p.attach({ stubborn });
+        if (!held.length) this.hand = null;
         this.applied++;
         out.push({ kind: 'attach', bed: bed.index, slot, wild: false });
         break;
@@ -590,4 +616,9 @@ export class Ward {
     if (id === 'stand') return this.deviceOnStand ? 'stand:full' : 'stand:empty';
     return STATIONS[id].tex;
   }
+}
+
+// Which leech in the hand will bite: any on a warmed man, else the first that isn't sulking.
+function biter(held: boolean[], prepared: boolean): number {
+  return prepared ? (held.length ? 0 : -1) : held.indexOf(false);
 }

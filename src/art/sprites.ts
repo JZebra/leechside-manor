@@ -218,6 +218,20 @@ function bdellometer(stroke = 0, fill = 0) {
 }
 
 // Carried crosswise in front of the doctor: poles, canvas, a man white as wax.
+// The bdellometer at work on a chest: the glass cup filling red, the barrel's piston stroking.
+function cupOnChest(stroke: number, fill: number) {
+  const p = new Pix(13, 15);
+  const top = stroke ? 2 : 0;
+  p.rect(5, top, 3, 6 - top, 'brass2'); // piston rod
+  p.rect(3, 4, 7, 5, 'brass1'); // barrel
+  p.rect(3, 4, 2, 5, 'brass2');
+  p.rect(3, 6, 7, 1, 'brass0');
+  p.ellipse(6.5, 11, 5, 3.2, 'glass2'); // the cup over the scarified skin
+  if (fill > 0) p.ellipse(6.5, 12, 4.4 * fill + 0.5, 2.2 * fill + 0.3, 'red2');
+  p.set(4, 10, 'linen0');
+  return p.outline('ink');
+}
+
 function stretcher() {
   const p = new Pix(34, 14);
   p.rect(0, 2, 34, 1, 'wood3').rect(0, 11, 34, 1, 'wood3');
@@ -394,6 +408,14 @@ function windowTex() {
 
 // ── Registration ────────────────────────────────────────────────────────────
 
+// A handful of hungry leeches held up, the stubborn ones curled: 'hand:ls' = a leech and a sulker.
+export const handKey = (held: boolean[]) => `hand:${held.map((s) => (s ? 's' : 'l')).join('')}`;
+function handful(held: boolean[]) {
+  const p = new Pix(13 + 8 * (held.length - 1), 15);
+  held.forEach((s, i) => p.blit(s ? stubbornLeech() : leech(1, (i - 1) * 0.35, { face: true }), i * 8, i % 2 ? 0 : 2));
+  return p;
+}
+
 const ESCAPE_ANGLES = 8;
 export const escapeKey = (dir: number, wiggle: number) => `esc:${dir}:${wiggle}`;
 export const escapeDir = (angle: number) => ((Math.round(angle / (Math.PI * 2 / ESCAPE_ANGLES)) % ESCAPE_ANGLES) + ESCAPE_ANGLES) % ESCAPE_ANGLES;
@@ -411,13 +433,13 @@ export function registerTextures(scene: Phaser.Scene) {
   for (let a = 0; a < 4; a++) add(`floor:used:${a}`, leech(SATED, a * 1.4 + 0.3));
   for (let d = 0; d < ESCAPE_ANGLES; d++) {
     const angle = d * (Math.PI * 2 / ESCAPE_ANGLES);
-    add(escapeKey(d, 0), leech(1, angle - 0.25, { face: true }));
-    add(escapeKey(d, 1), leech(0, angle + 0.25, { face: true }));
+    add(escapeKey(d, 0), leech(1, angle - 0.25, { face: true, scale: 1.3, size: 15 }));
+    add(escapeKey(d, 1), leech(0, angle + 0.25, { face: true, scale: 1.4, size: 15 }));
   }
   add('item:lint', lint());
   add('item:sugar', sugarWater());
   add('item:bdello', bdellometer());
-  for (let s = 0; s < 2; s++) for (let f = 0; f <= 4; f++) add(`bdello:${s}:${f}`, bdellometer(s, f / 4));
+  for (let s = 0; s < 2; s++) for (let f = 0; f <= 4; f++) add(`cup:${s}:${f}`, cupOnChest(s, f / 4));
   add('item:stretcher', stretcher());
   add('jar', jar());
   add('bucket', bucket());
@@ -433,5 +455,11 @@ export function registerTextures(scene: Phaser.Scene) {
   add('wall', wallTile());
   add('window', windowTex());
   add('dither', dither());
+  for (let n = 1; n <= 3; n++) {
+    for (let bits = 0; bits < 1 << n; bits++) {
+      const held = Array.from({ length: n }, (_, i) => !!(bits & (1 << i)));
+      add(handKey(held), handful(held));
+    }
+  }
   for (const [key, draw] of Object.entries(ICONS)) add(key, draw());
 }

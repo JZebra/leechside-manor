@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CONFIG, type StageId } from '../config';
 import { PIXEL, hex, type PaletteKey } from '../art/palette';
-import { ensurePatientTexture, LEECH_SLOTS, SATED, escapeKey, escapeDir, type PatientLook } from '../art/sprites';
+import { ensurePatientTexture, LEECH_SLOTS, SATED, escapeKey, escapeDir, handKey, type PatientLook } from '../art/sprites';
 import { Ward, type WardEvent, type Target, type Hand } from '../model/ward';
 import type { Patient } from '../model/patient';
 import { BEDS, BED, STATIONS, DRAIN, WORLD, WINDOWS, bedRect, type StationId, type Rect } from '../model/layout';
@@ -152,7 +152,7 @@ export class WardScene extends Phaser.Scene {
     this.doctor = sprite(this, 'doc:down:0');
     this.carry = sprite(this, 'item:lint').setVisible(false);
     this.carryCount = text(this, 0, 0, '', { size: 16, color: 'paper0', stroke: 'ink', strokeWidth: 4, bold: true }).setDepth(DEPTH.prompt);
-    this.device = sprite(this, 'bdello:0:0').setVisible(false);
+    this.device = sprite(this, 'cup:0:0').setVisible(false);
     this.prompt = text(this, 0, 0, '', { size: 17, color: 'paper0', stroke: 'ink', strokeWidth: 5 }).setOrigin(0.5, 1).setDepth(DEPTH.prompt);
   }
 
@@ -421,24 +421,33 @@ export class WardScene extends Phaser.Scene {
     const c = this.add.container(0, 0).setDepth(DEPTH.note);
     c.add(this.add.tileSprite(0, 0, STAGE.w / P, STAGE.h / P, 'dither').setOrigin(0).setScale(P));
     const g = this.add.graphics();
-    const x = 252, y = 138, w = 776, h = 444;
-    panel(g, x, y, w, h, 'paper1');
     c.add(g);
-    c.add(text(this, x + 36, y + 30, note.title, { font: 'display', size: 38 }));
-    c.add(text(this, x + 38, y + 82, note.speaker, { size: 19, italic: true, color: 'red1' }));
-    const body = text(this, x + 38, y + 118, note.body.join('\n\n'), { size: 23, wrap: w - 76, lineSpacing: 3 });
-    c.add(body);
+    const w = 777;
+    const x = Math.round((STAGE.w - w) / 2 / P) * P;
+    // lay the words out from y = 0, measure, then centre the sheet
+    const parts: (Phaser.GameObjects.Text | Phaser.GameObjects.Graphics)[] = [];
+    const add = <T extends Phaser.GameObjects.Text | Phaser.GameObjects.Graphics>(o: T) => (parts.push(o), c.add(o), o);
+    add(text(this, x + 36, 30, note.title, { font: 'display', size: 38 }));
+    add(text(this, x + 38, 82, note.speaker, { size: 19, italic: true, color: 'red1' }));
+    const body = add(text(this, x + 38, 118, note.body.join('\n\n'), { size: 23, wrap: w - 76, lineSpacing: 3 }));
     let hy = body.y + body.height + 18;
     if (note.hint) {
       const hint = text(this, x + 60, hy + 14, note.hint, { size: 20, wrap: w - 120, color: 'wood2', lineSpacing: 2 });
       const hg = this.add.graphics();
       panel(hg, x + 42, hy, w - 84, Math.ceil((hint.height + 28) / P) * P, 'paper0');
-      c.add(hg);
-      c.add(hint);
-      hy += hint.height + 40;
+      add(hg);
+      add(hint);
+      hy += hint.height + 42;
     }
-    if (note === STAGE_NOTES.basics) c.add(text(this, x + w / 2, hy + 4, CONTROLS, { size: 16, color: 'wood3' }).setOrigin(0.5, 0));
-    c.add(text(this, x + w / 2, y + h - 34, footer, { font: 'display', size: 24, color: 'red2' }).setOrigin(0.5));
+    if (note === STAGE_NOTES.basics) {
+      add(text(this, x + w / 2, hy, CONTROLS, { size: 16, color: 'wood3' }).setOrigin(0.5, 0));
+      hy += 34;
+    }
+    add(text(this, x + w / 2, hy + 18, footer, { font: 'display', size: 24, color: 'red2' }).setOrigin(0.5));
+    const h = Math.ceil((hy + 48) / P) * P;
+    const y = Math.round((STAGE.h - h) / 2 / P) * P;
+    panel(g, x, y, w, h, 'paper1');
+    for (const o of parts) o.y += y;
     this.noteView = c;
     this.noteShownAt = this.t;
   }
@@ -645,7 +654,7 @@ export class WardScene extends Phaser.Scene {
         this.escapeeSprites.set(e.id, img);
       }
       img.setTexture(escapeKey(escapeDir(e.angle), Math.floor(this.t * 4) % 2));
-      place(img, e.x - 6, e.y - 6);
+      place(img, e.x - 7, e.y - 7);
       if (dropTrail && !this.paused && !this.noteView) this.trail.push({ x: Math.round(e.x), y: Math.round(e.y), t: this.t });
     }
     for (const [id, img] of this.escapeeSprites) if (!seen.has(id)) { img.destroy(); this.escapeeSprites.delete(id); }
@@ -675,8 +684,8 @@ export class WardScene extends Phaser.Scene {
       const b = BEDS[this.pumpBed!];
       const stroke = Math.floor(this.pumpTime / 0.21) % 2;
       const fill = Math.floor(this.pumpTime * 2.5) % 5;
-      this.device.setTexture(`bdello:${stroke}:${fill}`).setDepth(DEPTH.world + b.y + BED.h);
-      place(this.device, b.x + 7, b.y + 10);
+      this.device.setTexture(`cup:${stroke}:${fill}`).setDepth(DEPTH.world + b.y + BED.h);
+      place(this.device, b.x + 7, b.y + 12);
     }
     const key = carryTexture(hand);
     this.carry.setVisible(!!key && !pumping);
@@ -741,7 +750,7 @@ export class WardScene extends Phaser.Scene {
 function carryTexture(hand: Hand): string | null {
   if (!hand) return null;
   switch (hand.kind) {
-    case 'leech': return hand.stubborn ? 'item:stubborn' : 'item:leech';
+    case 'leech': return handKey(hand.held);
     case 'used': return 'item:used';
     case 'lint': return 'item:lint';
     case 'sugar': return 'item:sugar';

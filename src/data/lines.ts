@@ -58,6 +58,7 @@ export const CONTROLS = 'WASD / arrows: walk  ·  E / Space: take, give, apply (
 export const VERB = {
   takeLeech: 'Take a leech',
   putBack: 'Put it back',
+  putBackSulky: 'Put the stubborn one back',
   takeLint: 'Take lint',
   takeSugar: 'Take sugar-water',
   takeDevice: 'Take the bdellometer',
@@ -86,6 +87,7 @@ export const FAIL = {
   door: 'Only for the fainted',
   stand: 'Reserved for Dr. Sarlandière’s instrument',
   scoopFull: 'Can’t hold any more',
+  handful: 'Three is a handful',
   nothing: 'Nothing to do here',
 } as const;
 export type Fail = keyof typeof FAIL;

@@ -43,8 +43,12 @@ export const DOCTOR_START = { x: 120, y: 88 };
 
 export const bedRect = (i: number): Rect => ({ x: BEDS[i].x, y: BEDS[i].y, w: BED.w, h: BED.h });
 
+// The doctor can't stand right against a bed's foot: with this margin his head stays
+// below the patient's chest, so the leeches on it are never hidden behind him.
+export const FOOTBOARD = 8;
+
 export function obstacles(): Rect[] {
-  const out: Rect[] = BEDS.map((_, i) => bedRect(i));
+  const out: Rect[] = BEDS.map((_, i) => ({ ...bedRect(i), h: BED.h + FOOTBOARD }));
   for (const s of Object.values(STATIONS)) if (s.foot) out.push(s.foot);
   return out;
 }
