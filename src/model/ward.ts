@@ -565,7 +565,8 @@ export class Ward {
   private stageArrivals(): WardEvent[] {
     if (CONFIG.stages[this.shift.stage].machine && !this.deviceOnStand && this.hand?.kind !== 'bdello') {
       this.deviceOnStand = true;
-      return [{ kind: 'deviceArrives' }];
+      // announced only when it arrives mid-day; on a day that starts with it, it's simply there
+      return this.shift.stageIndex > 0 ? [{ kind: 'deviceArrives' }] : [];
     }
     return [];
   }
