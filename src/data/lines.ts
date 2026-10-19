@@ -13,7 +13,7 @@ export interface Note {
 export const STAGE_NOTES: Record<StageId, Note> = {
   basics: {
     speaker: 'F.-J.-V. Broussais, Physician-in-Chief',
-    title: 'Day 1, 8 o’clock. The Salle Saint-Côme.',
+    title: 'February 1828. The Salle Saint-Côme.',
     body: [
       '“Thirty leeches, gentlemen, and lint when they drop. Every fever is an inflamed gut; bleed the gut and the fever goes.”',
     ],
@@ -27,13 +27,21 @@ export const STAGE_NOTES: Record<StageId, Note> = {
     ],
     hint: 'Anaemic men (ashen faces) have a narrow green and faint soon after it (Prop. 268). One leech and patience — their bites keep bleeding.',
   },
+  chill: {
+    speaker: 'Sister Marthe',
+    title: 'Three o’clock. The cold ones.',
+    body: [
+      '“The night watch is in from the frost, Monsieur, shivering fit to rattle the beds. I have had the orderlies bring up the stove and put the kettle on.”',
+    ],
+    hint: 'Chilled men (blanket to the chin, shivering, blue lips) take no leech until warmed: fill a hot-water bottle at the stove and tuck it in, then bleed them.',
+  },
   promotion: {
     speaker: 'F.-J.-V. Broussais',
-    title: 'Day 2. The Salle Saint-Louis.',
+    title: 'August 1831. The Salle Saint-Louis.',
     body: [
-      '“You bled the Saint-Côme very prettily, Monsieur. Saint-Louis has seven beds and twice the traffic — try not to fall over the orderlies.”',
+      '“You bled the Saint-Côme very prettily, Monsieur. Saint-Louis has seven beds and twice the traffic. And go easy with the jar: the cholera is in Hungary, the Austrians have closed the frontier, and Madame Ricard’s leeches come slowly.”',
     ],
-    hint: 'Orderlies cross the aisles and won’t give way: wait, or go round. Chilled men (blanket to the chin, shivering) take no leech until warmed: fill a hot-water bottle at the stove and tuck it in. Hungry leeches climb out of the jar and make for the drain — catch them.',
+    hint: 'Orderlies cross the aisles and won’t give way: wait, or go round. Hungry leeches climb out of the jar and make for the drain — catch them. Deliveries are slower this year: salt the fed leeches and reuse them. Chilled men still come in, shaking with fever: warm them at the stove first.',
   },
   machine: {
     speaker: 'A crate from the instrument-maker',
@@ -43,21 +51,30 @@ export const STAGE_NOTES: Record<StageId, Note> = {
     ],
     hint: 'Carry the bdellometer to a bed and HOLD E to pump. Let go to stop at once; it leaves no after-bleed — but it needs both your hands.',
   },
-  shortage: {
-    speaker: 'Madame Ricard, apothecary',
-    title: 'Day 3. The great shortage.',
-    body: [
-      '“Not one leech in Paris, Monsieur — the cholera wards bought them all, and the Hungarian shipment is lost. What is in the jar is all you will have today.”',
-    ],
-    hint: 'No deliveries today. Every fed leech you salt goes back in the jar; every one you lose is gone. The bdellometer is on its stand from the start.',
-  },
   drummers: {
     speaker: 'Sister Marthe',
-    title: 'Noon. Boys and conscripts.',
+    title: 'Three o’clock. Boys and conscripts.',
     body: [
       '“The drummer boys are in, and the new conscripts. The little ones bleed like fountains, and the conscripts faint if you so much as look at a leech.”',
     ],
     hint: 'Drummer boys’ bites bleed on and on (Prop. 266): one leech, and lint soon. Nervous conscripts panic when left alone: stand by them.',
+  },
+  cholera: {
+    speaker: 'Madame Ricard, apothecary — and Broussais',
+    title: 'April 1832. The cholera.',
+    body: [
+      '“The cholera is in Paris, Monsieur, and every hospital in the city is bleeding it. There is not a leech to be bought: what is in the jar is all you will have.”',
+      '“A gastro-enteritis like any other, gentlemen. Leeches to the belly.” — Broussais',
+    ],
+    hint: 'No deliveries this year: salted leeches go back in the jar, and the bdellometer is on its stand. The cholera brings men in cold and blue — no leech will take until you warm them with a hot-water bottle from the stove.',
+  },
+  epidemic: {
+    speaker: 'Sister Marthe',
+    title: 'One o’clock. The epidemic.',
+    body: [
+      '“They are carrying them in from the street now, Monsieur. Every bed, as fast as it empties.”',
+    ],
+    hint: 'Men arrive faster for the rest of the day.',
   },
 };
 
@@ -87,7 +104,7 @@ export const FAIL = {
   jarEmpty: 'The jar is empty',
   jarShortage: 'Empty — salt the fed ones to refill it',
   full: 'Three is plenty',
-  cold: 'He’s chilled — no leech will take. Warm him with a hot-water bottle first',
+  cold: 'He’s cold and blue — no leech will take. Warm him with a hot-water bottle first',
   notCold: 'He’s warm enough',
   saltHungry: 'Salt is for the fed ones',
   usedOnPatient: 'To the salt bucket with those',
@@ -126,7 +143,9 @@ export const VERDICT_REMARK = {
   REPRIMAND: '“Men fainting in the corridors, leeches in the drains. See me in the morning.”',
 };
 
-export const FINAL_REMARK = '“Three days in my wards and the garrison is pale, quiet and grateful. Physiological medicine, Monsieur — it never fails.”';
+// After the third year: what became of it all.
+export const FINAL_REMARK =
+  '“Physiological medicine never fails, Monsieur.” It did: the cholera killed some eighteen thousand Parisians in 1832, bleeding saved none of them, and from that year Broussais’s star — and France’s leech imports — began to fall.';
 
 export const OUTCOME_LABEL: Record<string, string> = {
   green: 'bled just right',

@@ -1,6 +1,6 @@
 # Credits
 
-**Leech Clinic** — a Ludum Dare 60 ("Old Tech") game.
+**Leech Clinic** — developed for Ludum Dare 60 ("Old Tech") by John Shen, using Claude AI.
 
 ## Music
 "Ancient Rite" Kevin MacLeod (incompetech.com)

@@ -87,7 +87,7 @@ export class Shift {
 
   private arrival(): ShiftEvent {
     const type = this.rng.weighted(this.stageSpec.mix) as PatientType;
-    const cold = this.rng.chance(this.spec.coldChance);
+    const cold = this.rng.chance(this.stageSpec.cold ?? 0);
     return { kind: 'arrival', type, profile: this.profile(type), cold };
   }
 

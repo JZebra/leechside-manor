@@ -1,10 +1,14 @@
 # Leech Clinic — Ludum Dare 60 ("Old Tech")
 
-Overcooked-style single-player chaos in a leech ward: Broussais's house physician (Val-de-Grâce,
-Paris, early 1830s) bleeds soldiers with leeches across three short days, 8:00 to the six o'clock bell:
-Day 1 the Salle Saint-Côme (basics; anaemic men at noon) · Day 2 the Salle Saint-Louis (seven beds,
-orderlies in the aisles, chilled men, runaway leeches; the bdellometer at midday) · Day 3 the shortage
-(no deliveries: salted leeches are the only supply; drummer boys and nervous conscripts at noon). Sister project of `../thirty-leeches` (same palette, Pix, sounds, fonts).
+Overcooked-style single-player chaos in a leech ward: Broussais's house physician at the Val-de-Grâce
+bleeds soldiers with leeches, one day's shift (8:00 to the six o'clock bell) in each of three years
+synced to the real history of the leech trade and the cholera:
+1828 the Salle Saint-Côme (the craze at its height; basics, anaemic men at noon; at 3 the stove is
+brought up and chilled men come in from the frost — a hot-water bottle before any leech will take) ·
+1831 the Salle Saint-Louis (seven beds, orderlies, runaway leeches; cholera in Hungary slows
+deliveries; the bdellometer at 12:30, drummer boys and nervous conscripts at 3) · 1832 the cholera
+(no deliveries at all; the cold, blue men are cholera patients; faster from 1 pm).
+Made for Ludum Dare 60 by John Shen, using Claude AI (credits screen: C on the title page). Sister project of `../thirty-leeches` (same palette, Pix, sounds, fonts).
 Title plate: BnF Français 127 f. 258r (Boccaccio, *Des cas des nobles hommes et femmes*), via the BnF's
 IIIF server; BnF terms allow free non-commercial reuse with the credit "Source gallica.bnf.fr / BnF".
 The design brief is `BRIEF.md`.
@@ -19,9 +23,12 @@ The design brief is `BRIEF.md`.
 - `npm run zip` — `leech-clinic-itch.zip` with index.html at the root
 
 ## Layout
-- `src/config.ts` — **every gameplay number**: the days (ward, length, jar, deliveries, escapes,
-  orderlies, chilled share, stages, verdict lines), stages (arrival rate, patient mix, machine), slips,
-  orderlies. Change balance here, never in logic.
+- `src/config.ts` — **every gameplay number**: the years (`days[]`: year, ward, length, jar, delivery
+  schedule or null, escapes, orderlies, what the cold men are called, stages, verdict lines), stages
+  (arrival rate, patient mix, share of cold men, and whether the stove / bdellometer are in the ward),
+  slips, orderlies. Change balance here, never in logic. Historical basis:
+  ~34 M leeches imported in 1827, peak ~57 M in 1832; cholera in Hungary July 1831 (Austrian
+  cordon); Paris cholera spring 1832; Broussais's bleeding failed and leeching declined after.
 - `src/data/lines.ts` — every word the ward says: stage notes, verbs, failure reasons, verdicts.
 - `src/model/` — pure logic, **no Phaser** (tests and the sim import it):
   `patient.ts` (blood meter, leeches feeding, after-bleed, chilled/warmed, panic, faint), `supply.ts`
@@ -29,7 +36,8 @@ The design brief is `BRIEF.md`.
   collision, slips; targeting; the hand; beds and queue; floor leeches, escapes, salting; orderlies),
   `layout.ts` (the two floor plans in art px: beds, stations with sprite box / footprint / reach rect,
   orderly routes).
-- `src/scenes/` — Phaser: Boot (textures), Title (BnF Fr. 127 miniature: Galerius eaten by worms), Ward (input → model → drawing), Results.
+- `src/scenes/` — Phaser: Boot (textures), Title (BnF Fr. 127 miniature: Galerius eaten by worms; year
+  select; C for credits), Ward (input → model → drawing), Results, Credits.
 - `src/art/` — `palette.ts` (Thirty Leeches palette + additions), `pix.ts` (palette-locked buffer),
   `sprites.ts` (every sprite drawn procedurally and registered as a texture).
 - `src/audio/` — Thirty Leeches' sound system: file → filtered noise → jsfxr; `sounds.ts` lists them.

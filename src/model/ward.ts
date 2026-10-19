@@ -87,6 +87,7 @@ export type WardEvent =
   | { kind: 'catch' }
   | { kind: 'delivery'; count: number }
   | { kind: 'deviceArrives' }
+  | { kind: 'stoveArrives' }
   | { kind: 'slip'; fee: number; spilled: number }
   | { kind: 'jostle'; x: number; y: number };
 
@@ -110,6 +111,7 @@ export class Ward {
   readonly doctor: { x: number; y: number; facing: Facing; flip: boolean; moving: boolean; dazed: number };
   hand: Hand = null;
   deviceOnStand = false; // the bdellometer arrives with a 'machine' stage
+  stoveIn = false; // the stove (for hot-water bottles) arrives with a 'stove' stage
   pumping: number | null = null; // bed being pumped this frame
   applied = 0; // leeches set on patients, for Broussais's arithmetic
   lost = 0; // leeches down the drain or squashed
@@ -128,7 +130,9 @@ export class Ward {
     this.layout = LAYOUTS[this.shift.spec.ward];
     this.supply = new Supply(this.shift.spec.jar, this.shift.spec.deliveries);
     this.rng = makeRng(seed, 'ward', day);
-    this.walls = obstaclesOf(this.layout);
+    // the stove isn't in the ward until a 'stove' stage brings it: it blocks the way only then
+    const stoveFoot = this.layout.stations.stove.foot;
+    this.walls = obstaclesOf(this.layout).filter((r) => r !== stoveFoot);
     this.beds = this.layout.beds.map((_, index) => ({ index, patient: null, bites: [], freeIn: 0, leaving: 0 }));
     const s = this.layout.doctorStart;
     this.doctor = { x: s.x, y: s.y, facing: 'down', flip: false, moving: false, dazed: 0 };
@@ -165,7 +169,8 @@ export class Ward {
   }
 
   private blocked(r: Rect): boolean {
-    return this.walls.some((o) => overlaps(r, o)) || this.orderlies.some((o) => overlaps(r, bulkOf(o)));
+    const stove = this.stoveIn ? this.layout.stations.stove.foot : null;
+    return this.walls.some((o) => overlaps(r, o)) || (!!stove && overlaps(r, stove)) || this.orderlies.some((o) => overlaps(r, bulkOf(o)));
   }
 
   private moveAxis(dx: number, dy: number) {
@@ -241,6 +246,7 @@ export class Ward {
       if (dist <= reach) out.push({ target: { kind: 'bed', bed: i }, dist, at: nearestOn(x, y, r) });
     });
     for (const id of Object.keys(this.layout.stations) as StationId[]) {
+      if (id === 'stove' && !this.stoveIn) continue;
       const r = this.layout.stations[id].use;
       const dist = distToRect(x, y, r);
       if (dist <= reach) out.push({ target: { kind: 'station', id }, dist, at: nearestOn(x, y, r) });
@@ -561,14 +567,28 @@ export class Ward {
     return out;
   }
 
-  // What a new stage brings into the ward.
+  // What a new stage brings into the ward. Things that arrive mid-day are announced; on a
+  // day that starts with them, they're simply there.
   private stageArrivals(): WardEvent[] {
-    if (CONFIG.stages[this.shift.stage].machine && !this.deviceOnStand && this.hand?.kind !== 'bdello') {
+    const out: WardEvent[] = [];
+    const spec = CONFIG.stages[this.shift.stage];
+    const midday = this.shift.stageIndex > 0;
+    if (spec.machine && !this.deviceOnStand && this.hand?.kind !== 'bdello') {
       this.deviceOnStand = true;
-      // announced only when it arrives mid-day; on a day that starts with it, it's simply there
-      return this.shift.stageIndex > 0 ? [{ kind: 'deviceArrives' }] : [];
+      if (midday) out.push({ kind: 'deviceArrives' });
     }
-    return [];
+    if (spec.stove && !this.stoveIn) {
+      this.stoveIn = true;
+      this.clearOf(this.layout.stations.stove.foot!);
+      if (midday) out.push({ kind: 'stoveArrives' });
+    }
+    return out;
+  }
+
+  // If something is set down where the doctor stands, he steps out of its way.
+  private clearOf(r: Rect) {
+    const d = this.doctor;
+    if (overlaps(footOf(d.x, d.y), r)) d.y = Math.min(this.layout.walk.y1, r.y + r.h + 3);
   }
 
   private patientEvents(bed: number, events: ReturnType<Patient['tick']>): WardEvent[] {
@@ -764,6 +784,10 @@ export class Ward {
     if (!this.shift.skipTo(id)) return [];
     const reached = this.day.stages.slice(0, this.shift.stageIndex + 1);
     if (reached.some((s) => CONFIG.stages[s.id].machine)) this.deviceOnStand = true;
+    if (reached.some((s) => CONFIG.stages[s.id].stove) && !this.stoveIn) {
+      this.stoveIn = true;
+      this.clearOf(this.layout.stations.stove.foot!);
+    }
     return [{ kind: 'stage', id }];
   }
 

@@ -91,7 +91,7 @@ export class ResultsScene extends Phaser.Scene {
     stamp.setScale(1.6).setVisible(false);
     const total = run.reduce((a, b) => a + (b ?? 0), 0);
     const remark = last && run.filter((x) => x != null).length === CONFIG.days.length
-      ? `${FINAL_REMARK} Three days: ${total} francs.`
+      ? `${FINAL_REMARK} Your three years: ${total} francs.`
       : VERDICT_REMARK[verdict];
     text(this, 920, 572, remark, { size: 18, italic: true, wrap: 280, color: 'wood2' });
     text(this, 1196, 648, '— F.-J.-V. Broussais', { size: 16, italic: true, color: 'wood3' }).setOrigin(1, 0);

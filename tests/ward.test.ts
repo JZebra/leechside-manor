@@ -176,6 +176,25 @@ describe('the ward', () => {
     expect(w.target()?.check).toEqual({ ok: true, verb: 'apply' });
   });
 
+  it('1828: the stove is brought up at three o’clock — not there (or in the way) before', () => {
+    const w = new Ward('stove', DAY1);
+    w.tick(0.1);
+    expect(w.stoveIn).toBe(false);
+    const st = w.layout.stations.stove;
+    // he can stand where the stove will go, and nothing there answers to E
+    at(w, st.foot!.x + st.foot!.w / 2, st.foot!.y + st.foot!.h, 'up');
+    expect(w.target()?.target).not.toEqual({ kind: 'station', id: 'stove' });
+    w.skipTo('chill');
+    expect(w.stoveIn).toBe(true);
+    expect(w.doctor.y).toBeGreaterThan(st.foot!.y + st.foot!.h); // stepped out of its way
+    byStation(w, 'stove');
+    expect(w.target()?.check).toEqual({ ok: true, verb: 'takeBottle' });
+    // and on the later years it's there from the start
+    const later = new Ward('stove', DAY2);
+    later.tick(0.1);
+    expect(later.stoveIn).toBe(true);
+  });
+
   it('stepping on fed leeches can floor him: dazed, the leech squashed, his handful scattered', () => {
     const w = new Ward('slip');
     at(w, 60, 160, 'side');

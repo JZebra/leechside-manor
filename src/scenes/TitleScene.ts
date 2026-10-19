@@ -8,14 +8,6 @@ import { loadProgress } from '../ui/progress';
 import { CONFIG } from '../config';
 import { FLAGS } from '../flags';
 
-export const PLATE_CREDIT =
-  'Title plate: the death of the emperor Galerius, eaten by worms. Boccaccio, Des cas des nobles hommes et femmes (De casibus virorum illustrium, trans. Laurent de Premierfait), Paris, 3rd quarter of the 15th century. BnF, Français 127, f. 258r. Source gallica.bnf.fr / BnF.';
-export const FONT_CREDIT = 'Type: IM Fell English (Igino Marini) and EB Garamond (Georg Duffner, Octavio Pardo), SIL Open Font License.';
-export const MUSIC_CREDIT =
-  'Music: “Ancient Rite” and “Vanishing”, Kevin MacLeod (incompetech.com). Licensed under Creative Commons: By Attribution 4.0 License, http://creativecommons.org/licenses/by/4.0/';
-export const SOUND_CREDIT =
-  'Sounds (CC0): Kenney, Fantozzi, bart, EZduzziteh, Independent.nu, sinny and TinyWorlds, via kenney.nl and OpenGameArt.';
-
 export class TitleScene extends Phaser.Scene {
   constructor() {
     super('title');
@@ -28,7 +20,7 @@ export class TitleScene extends Phaser.Scene {
     const g = this.add.graphics();
 
     // the plate, framed in ink
-    const ph = 580;
+    const ph = 600;
     let pw = 560;
     if (this.textures.exists('plate')) {
       const src = this.textures.get('plate').getSourceImage() as HTMLImageElement;
@@ -36,20 +28,19 @@ export class TitleScene extends Phaser.Scene {
       g.fillStyle(hex('ink')).fillRect(54, 54, pw + 12, ph + 12);
       this.add.image(60, 60, 'plate').setOrigin(0).setDisplaySize(pw, ph);
     }
-    text(this, 60, 650, '“Le ixe chapitre contient le cas de Galerius … empereur des Rommains.”', { size: 17, italic: true, color: 'wood3' });
-    text(this, 60, 676, `${MUSIC_CREDIT} ${SOUND_CREDIT}`, { size: 11, color: 'paper4', wrap: pw });
+    text(this, 60, 668, '“Le ixe chapitre contient le cas de Galerius … empereur des Rommains.”', { size: 17, italic: true, color: 'wood3' });
 
     const x = 60 + pw + 50;
     const w = STAGE.w - x - 60;
     text(this, x, 70, 'Leech Clinic', { font: 'display', size: 84, color: 'ink' });
-    text(this, x + 4, 166, 'Val-de-Grâce, Paris · three days under Broussais', { size: 21, italic: true, color: 'red1' });
+    text(this, x + 4, 166, 'Val-de-Grâce, Paris · three years under Broussais, 1828–1832', { size: 21, italic: true, color: 'red1' });
     text(this, x + 4, 210,
-      'The early 1830s. Broussais orders thirty leeches for every man, and you are his house physician. ' +
+      'Broussais orders thirty leeches for every man, France buys them by the tens of millions, and you are his house physician. ' +
       'Bleed each soldier just enough — into the green — then press lint on the bites. ' +
-      'Carry out the fainted, salt the fed leeches, mind your footing, and keep the hungry ones out of the drain.',
+      'Carry out the fainted, salt the fed leeches, mind your footing — and then the cholera comes.',
       { size: 20, wrap: w, lineSpacing: 3 });
 
-    // the three days: open ones can be chosen with 1–3
+    // the three years: open ones can be chosen with 1–3 (or the arrow keys)
     const progress = loadProgress();
     if (FLAGS.day != null) progress.unlocked = CONFIG.days.length - 1; // ?day= opens every day (testing)
     let chosen = FLAGS.day ?? progress.unlocked;
@@ -69,7 +60,7 @@ export class TitleScene extends Phaser.Scene {
       if (i > progress.unlocked) return;
       chosen = i;
       marker.setY(rows[i].y);
-      go.setText(`Press E or Space to begin Day ${i + 1}`);
+      go.setText(`Press E or Space to begin ${CONFIG.days[i].year}`);
     };
     choose(chosen);
 
@@ -77,7 +68,8 @@ export class TitleScene extends Phaser.Scene {
     const mute = text(this, x + w, 584, '', { size: 16, color: 'wood3', align: 'right' }).setOrigin(1, 0);
     const showMute = () => mute.setText(isMuted() ? 'Sound off (M)' : 'Sound on (M)');
     showMute();
-    text(this, x, 668, `${PLATE_CREDIT} ${FONT_CREDIT}`, { size: 11, color: 'paper4', wrap: w });
+    text(this, x, 668, 'C — Credits', { font: 'display', size: 20, color: 'wood3' });
+    text(this, x + w, 668, 'Ludum Dare 60 · John Shen', { size: 15, italic: true, color: 'paper4' }).setOrigin(1, 0);
 
     const start = () => {
       sfx('page');
@@ -88,6 +80,10 @@ export class TitleScene extends Phaser.Scene {
     kb.on('keydown-E', start);
     kb.on('keydown-SPACE', start);
     kb.on('keydown-ENTER', start);
+    kb.on('keydown-C', () => {
+      sfx('page');
+      this.scene.start('credits');
+    });
     kb.on('keydown-ONE', () => choose(0));
     kb.on('keydown-TWO', () => choose(1));
     kb.on('keydown-THREE', () => choose(2));

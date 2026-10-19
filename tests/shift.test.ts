@@ -28,7 +28,7 @@ describe('Shift', () => {
     expect(first.filter((e) => e.kind === 'arrival')).toHaveLength(CONFIG.arrivals.opening);
   });
 
-  it('day one: only soldiers until noon brings the anaemic', () => {
+  it('1828: only soldiers until noon brings the anaemic', () => {
     const s = new Shift('test', 0);
     const ev: ShiftEvent[] = [];
     while (s.minutes < 12 * 60 - 1) ev.push(...s.tick(0.25));
@@ -36,9 +36,17 @@ describe('Shift', () => {
     expect([...types]).toEqual(['soldier']);
   });
 
-  it('no cold men on day one; some on day two', () => {
-    const colds = (day: number) => runDay(new Shift('cold', day)).filter((e) => e.kind === 'arrival' && e.cold).length;
-    expect(colds(0)).toBe(0);
+  it('cold men: in 1828 only from three o’clock; in 1831 and 1832 all day', () => {
+    const s = new Shift('cold', 0);
+    const before: ShiftEvent[] = [];
+    while (s.minutes < 15 * 60 - 1) before.push(...s.tick(0.25));
+    expect(before.filter((e) => e.kind === 'arrival' && e.cold)).toHaveLength(0);
+    const after: ShiftEvent[] = [];
+    while (!s.over) after.push(...s.tick(0.25));
+    // over a handful of shifts (one afternoon may happen to bring none)
+    const colds = (day: number) => ['a', 'b', 'c', 'd', 'e'].reduce((n, seed) => n + runDay(new Shift(seed, day)).filter((e) => e.kind === 'arrival' && e.cold).length, 0);
+    expect(colds(0)).toBeGreaterThan(0);
     expect(colds(1)).toBeGreaterThan(0);
+    expect(colds(2)).toBeGreaterThan(0);
   });
 });

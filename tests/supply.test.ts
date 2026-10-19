@@ -10,21 +10,21 @@ const run = (s: Supply, seconds: number) => {
 
 describe('Supply', () => {
   it('her boy brings leeches up to the cap', () => {
-    const s = new Supply(8, true);
-    const ev = run(s, CONFIG.supply.deliveryEvery * 6);
+    const s = new Supply(8, { every: 24, size: 4 });
+    const ev = run(s, 24 * 6);
     expect(ev.length).toBeGreaterThan(0);
     expect(s.jar).toBe(CONFIG.supply.cap);
   });
 
-  it('on the day of the shortage nothing comes', () => {
-    const s = new Supply(14, false);
+  it('in the cholera year nothing comes', () => {
+    const s = new Supply(14, null);
     s.take();
     expect(run(s, 200)).toEqual([]);
     expect(s.jar).toBe(13);
   });
 
   it('an empty jar gives nothing', () => {
-    const s = new Supply(1, false);
+    const s = new Supply(1, null);
     expect(s.take()).toBe(true);
     expect(s.take()).toBe(false);
     expect(s.jar).toBe(0);

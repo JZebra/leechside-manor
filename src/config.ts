@@ -2,18 +2,23 @@
 // overlapping tasks, not short timers. Blood is a 0–1 "drawn" meter per patient.
 
 export type PatientType = 'soldier' | 'anaemic' | 'drummer' | 'nervous';
-export type StageId = 'basics' | 'frail' | 'promotion' | 'machine' | 'shortage' | 'drummers';
+export type StageId = 'basics' | 'frail' | 'chill' | 'promotion' | 'machine' | 'drummers' | 'cholera' | 'epidemic';
 export type WardId = 'saintCome' | 'saintLouis';
 
+// Each level is one day's shift in a year of Broussais's reign at the Val-de-Grâce, set to the
+// real history: the leech craze at its height (1828), cholera in Hungary and the leech
+// shipments slowed at the Austrian cordon (1831), cholera in Paris (1832).
 export interface DaySpec {
-  title: string;
+  year: number;
+  title: string; // shown on the title page and the report
+  when: string; // the day, in the notes ("an April morning")
   ward: WardId;
   realSeconds: number; // 8:00 to the six o'clock bell, in real seconds
   jar: number; // leeches in Madame Ricard's jar at eight
-  deliveries: boolean; // does her boy bring more during the day?
+  deliveries: { every: number; size: number } | null; // her boy with more leeches (null: none come)
   escapes: boolean; // do hungry leeches climb out of the jar?
   orderlies: boolean; // orderlies crossing the ward
-  coldChance: number; // share of men who arrive chilled (no leech takes until warmed)
+  coldLabel: string; // what the cold, blue men are called this year ('chilled', 'cholera')
   stages: { id: StageId; at: number }[]; // clock minutes; each opens with a note (data/lines.ts)
   verdict: { approved: number; noted: number }; // francs at six (see npm run sim)
 }
@@ -22,6 +27,8 @@ export interface StageSpec {
   interval: number; // seconds between arrivals
   mix: Partial<Record<PatientType, number>>; // which men arrive (weights)
   machine?: boolean; // the bdellometer is on its stand from this stage
+  stove?: boolean; // the stove (and its kettle, for hot-water bottles) is in the ward from this stage
+  cold?: number; // share of men who come in cold and blue: no leech takes until they're warmed
 }
 
 export const CONFIG = {
@@ -32,47 +39,55 @@ export const CONFIG = {
 
   days: [
     {
-      title: 'Day 1 — the Salle Saint-Côme',
+      year: 1828,
+      title: '1828 — the Salle Saint-Côme',
+      when: 'a February morning, 1828',
       ward: 'saintCome',
       realSeconds: 200,
       jar: 9,
-      deliveries: true,
+      deliveries: { every: 24, size: 4 }, // plenty: France buys some 34 million leeches a year
       escapes: false,
       orderlies: false,
-      coldChance: 0,
+      coldLabel: 'chilled',
       stages: [
         { id: 'basics', at: 8 * 60 },
         { id: 'frail', at: 12 * 60 },
+        { id: 'chill', at: 15 * 60 }, // the night watch in from the frost; the stove brought up
       ],
       verdict: { approved: 115, noted: 65 },
     },
     {
-      title: 'Day 2 — the Salle Saint-Louis',
+      year: 1831,
+      title: '1831 — the Salle Saint-Louis',
+      when: 'an August morning, 1831',
       ward: 'saintLouis',
       realSeconds: 230,
       jar: 10,
-      deliveries: true,
+      deliveries: { every: 28, size: 4 }, // slowed: cholera in Hungary, the Austrian cordon
       escapes: true,
       orderlies: true,
-      coldChance: 0.25,
+      coldLabel: 'chilled',
       stages: [
         { id: 'promotion', at: 8 * 60 },
         { id: 'machine', at: 12 * 60 + 30 },
+        { id: 'drummers', at: 15 * 60 },
       ],
       verdict: { approved: 80, noted: 35 },
     },
     {
-      title: 'Day 3 — the great shortage',
+      year: 1832,
+      title: '1832 — the cholera',
+      when: 'an April morning, 1832',
       ward: 'saintLouis',
       realSeconds: 230,
       jar: 18,
-      deliveries: false,
+      deliveries: null, // every hospital in Paris is bleeding the cholera: none to be had
       escapes: true,
       orderlies: true,
-      coldChance: 0.2,
+      coldLabel: 'cholera',
       stages: [
-        { id: 'shortage', at: 8 * 60 },
-        { id: 'drummers', at: 12 * 60 },
+        { id: 'cholera', at: 8 * 60 },
+        { id: 'epidemic', at: 13 * 60 },
       ],
       verdict: { approved: 70, noted: 30 },
     },
@@ -81,10 +96,12 @@ export const CONFIG = {
   stages: {
     basics: { interval: 17, mix: { soldier: 1 } },
     frail: { interval: 14, mix: { soldier: 3, anaemic: 1.4 } },
-    promotion: { interval: 13, mix: { soldier: 3, anaemic: 1 } },
-    machine: { interval: 12, mix: { soldier: 3, anaemic: 1.2 }, machine: true },
-    shortage: { interval: 14, mix: { soldier: 3, anaemic: 1.2 }, machine: true },
-    drummers: { interval: 13, mix: { soldier: 3, anaemic: 1, drummer: 0.9, nervous: 0.9 }, machine: true },
+    chill: { interval: 14, mix: { soldier: 3, anaemic: 1.4 }, stove: true, cold: 0.35 },
+    promotion: { interval: 13, mix: { soldier: 3, anaemic: 1 }, stove: true, cold: 0.15 },
+    machine: { interval: 12, mix: { soldier: 3, anaemic: 1.2 }, stove: true, cold: 0.15, machine: true },
+    drummers: { interval: 12, mix: { soldier: 3, anaemic: 1, drummer: 0.9, nervous: 0.9 }, stove: true, cold: 0.15, machine: true },
+    cholera: { interval: 15, mix: { soldier: 3, anaemic: 1.2, drummer: 0.6, nervous: 0.6 }, stove: true, cold: 0.3, machine: true },
+    epidemic: { interval: 12, mix: { soldier: 3, anaemic: 1.2, drummer: 0.8, nervous: 0.8 }, stove: true, cold: 0.3, machine: true },
   } as Record<StageId, StageSpec>,
 
   arrivals: {
@@ -130,9 +147,7 @@ export const CONFIG = {
   },
 
   supply: {
-    cap: 14,
-    deliveryEvery: 24, // seconds
-    deliverySize: 4,
+    cap: 14, // deliveries never fill the jar past this (each year sets how often and how many)
   },
 
   orderly: {

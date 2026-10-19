@@ -334,6 +334,10 @@ export class WardScene extends Phaser.Scene {
         case 'stage':
           if (FLAGS.notes) this.notes.push(STAGE_NOTES[e.id]);
           break;
+        case 'stoveArrives':
+          sfx('door');
+          this.sayAt(this.L.stations.stove.box, 'The stove is brought up', 'info');
+          break;
         case 'deviceArrives':
           this.sayAt(this.L.stations.stand.box, 'The bdellometer has come', 'info');
           break;
@@ -563,7 +567,7 @@ export class WardScene extends Phaser.Scene {
     this.hud.mute.setText(isMuted() ? 'sound off (M)' : '');
     const secs = (n: number) => `${Math.max(0, Math.ceil(n))} s`;
     let banner = '';
-    if (!s.deliveries) banner = 'No deliveries today — salt the fed leeches and reuse them';
+    if (!s.deliveries) banner = 'Not a leech to be bought — salt the fed ones and reuse them';
     else if (s.jar < CONFIG.supply.cap) banner = `Next jar of leeches in ${secs(s.nextDelivery)}`;
     this.hud.banner.setText(banner).setColor(s.deliveries ? '#ecdfc0' : '#c8483a');
     const salting = ward.salting.reduce((n, x) => n + x.count, 0);
@@ -574,7 +578,7 @@ export class WardScene extends Phaser.Scene {
 
   private renderStations() {
     const ward = this.ward;
-    this.stations.stove.setTexture(`stove:${Math.floor(this.t * 2.5) % 2}`);
+    this.stations.stove.setTexture(`stove:${Math.floor(this.t * 2.5) % 2}`).setVisible(ward.stoveIn);
     this.stations.stand.setTexture(ward.stationTex('stand'));
   }
 
@@ -643,7 +647,8 @@ export class WardScene extends Phaser.Scene {
       }
 
       // name and type
-      const kind = p.type === 'soldier' ? '' : `\n${CONFIG.patient.types[p.type].label.toLowerCase()}`;
+      const tags = [p.type === 'soldier' ? '' : CONFIG.patient.types[p.type].label.toLowerCase(), p.cold ? ward.day.coldLabel : ''].filter(Boolean);
+      const kind = tags.length ? `\n${tags.join(', ')}` : '';
       const key = `${p.profile.rank} ${p.profile.surname}${kind}`;
       if (key !== v.labelKey) v.label.setText((v.labelKey = key));
       v.label.setVisible(!blink);
