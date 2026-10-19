@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CONFIG } from '../config';
 import { PIXEL, hex, type PaletteKey } from '../art/palette';
-import { ensurePatientTexture, LEECH_SLOTS, SATED, escapeKey, escapeDir, handKey, type PatientLook } from '../art/sprites';
+import { ensurePatientTexture, LEECH_SLOTS, SATED, escapeKey, escapeDir, handKey, type PatientLook, type Hat, type Outfit, type Blanket } from '../art/sprites';
 import { Ward, type WardEvent, type Target, type Hand } from '../model/ward';
 import type { Patient } from '../model/patient';
 import { BED, WORLD, type Layout, type StationId, type Rect } from '../model/layout';
@@ -36,9 +36,14 @@ interface QueueView {
 
 type Keys = Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT' | 'E' | 'SPACE' | 'SHIFT', Phaser.Input.Keyboard.Key>;
 
+// What a man wears, from his record (with plain defaults for anything missing).
+export interface Wardrobe { skin: string; hair: string; moustache: boolean; beard?: boolean; hat?: Hat; outfit?: Outfit; blanket?: Blanket }
+const wardrobe = (pt: Wardrobe) => ({ beard: !!pt.beard, hat: pt.hat ?? 'none', outfit: pt.outfit ?? 'shirt', blanket: pt.blanket ?? 'army' });
+
 export function lookOf(p: Patient): PatientLook {
-  const pt = p.profile.portrait as { skin: string; hair: string; moustache: boolean };
+  const pt = p.profile.portrait as unknown as Wardrobe;
   return {
+    ...wardrobe(pt),
     skin: pt.skin,
     hair: p.type === 'drummer' ? 'hairBrown' : pt.hair,
     moustache: pt.moustache && p.type !== 'drummer',
@@ -830,8 +835,9 @@ export class WardScene extends Phaser.Scene {
       const e = q[i];
       v.head.setVisible(!!e);
       if (!e) return void v.name.setText('');
-      const pt = e.profile.portrait as { skin: string; hair: string; moustache: boolean };
+      const pt = e.profile.portrait as unknown as Wardrobe;
       const look: PatientLook = {
+        ...wardrobe(pt),
         skin: pt.skin,
         hair: e.type === 'drummer' ? 'hairBrown' : pt.hair,
         moustache: pt.moustache && e.type !== 'drummer',

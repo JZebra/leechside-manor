@@ -71,6 +71,7 @@ export const PALETTE = {
   stone0: '#2f2a27', stone1: '#463f3a', stone2: '#5c544d', stone3: '#766c62',
   copper0: '#5e2f1c', copper1: '#8e4a2a', copper2: '#c07a48',
   meterGreen: '#5f8a4a', meterBlue: '#4a6aa8', meterGreen1: '#9ccc78', meterBlue1: '#8eb0e6',
+  sky0: '#4f6f9c', sky1: '#7a9cc8', // hussars' sky-blue dolmans
 } as const;
 
 export type PaletteKey = keyof typeof PALETTE;

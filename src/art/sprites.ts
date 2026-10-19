@@ -121,10 +121,19 @@ const writhing = (wave: number, angle: number) => leech({ angle, length: 11, gir
 
 // ── People ───────────────────────────────────────────────────────────────────
 
+// What a man wears in bed. His coat, if he kept it, is his regiment's; the rest is luck.
+export type Hat = 'none' | 'nightcap' | 'forage' | 'bandage';
+export type Outfit = 'shirt' | 'striped' | 'gown' | 'ligne' | 'leger' | 'grenadier' | 'hussar' | 'artillery' | 'drummer';
+export type Blanket = 'army' | 'brown' | 'check' | 'patch';
+
 export interface PatientLook {
   skin: string; // 'A' | 'B' | 'C'
   hair: string;
   moustache: boolean;
+  beard: boolean;
+  hat: Hat;
+  outfit: Outfit;
+  blanket: Blanket;
   build: 'normal' | 'thin' | 'small';
   pallor: number; // 0–3
   eyes: 'open' | 'closed' | 'wide';
@@ -137,7 +146,32 @@ export const PATIENT_H = 36;
 // Where leeches go (art px within the patient sprite): left chest, epigastrium, right chest.
 export const LEECH_SLOTS: [number, number][] = [[7, 17], [11, 20], [15, 17]];
 
-// A man in bed seen from above: head on the pillow, shirt open, army blanket to the waist.
+// Sleeves and shoulders: shirtsleeves, or a uniform coat thrown over them. trim = collar and
+// cuffs; extra marks: epaulettes (grenadiers), braid (hussars), lace (drummers), stripes, buttons.
+interface Garment { base: PaletteKey; dark: PaletteKey; trim?: PaletteKey; buttons?: PaletteKey; epaulettes?: PaletteKey; braid?: PaletteKey; lace?: PaletteKey; stripes?: PaletteKey }
+const GARMENTS: Record<Outfit, Garment> = {
+  shirt: { base: 'linen1', dark: 'paper2' },
+  striped: { base: 'linen1', dark: 'paper2', stripes: 'navy2' },
+  gown: { base: 'slate2', dark: 'slate1', trim: 'slate1' }, // the hospital's grey capote
+  ligne: { base: 'navy1', dark: 'navy0', trim: 'red2', buttons: 'brass2' }, // line infantry
+  leger: { base: 'green1', dark: 'green0', trim: 'brass1', buttons: 'brass2' }, // light infantry
+  grenadier: { base: 'navy1', dark: 'navy0', trim: 'red2', epaulettes: 'red3' },
+  hussar: { base: 'sky1', dark: 'sky0', trim: 'red2', braid: 'brass2' },
+  artillery: { base: 'navy1', dark: 'navy0', trim: 'red1', buttons: 'red2' },
+  drummer: { base: 'navy1', dark: 'navy0', trim: 'red2', lace: 'brass2' },
+};
+
+// Blankets: [ground, shade, stripe] and a pattern.
+const BLANKETS: Record<Blanket, { ground: PaletteKey; shade: PaletteKey; stripe: PaletteKey }> = {
+  army: { ground: 'slate2', shade: 'slate1', stripe: 'red1' },
+  brown: { ground: 'wood3', shade: 'wood2', stripe: 'paper3' },
+  check: { ground: 'navy2', shade: 'navy1', stripe: 'navy3' },
+  patch: { ground: 'slate2', shade: 'slate1', stripe: 'red1' },
+};
+const PATCHES: PaletteKey[] = ['red1', 'slate2', 'wood3', 'paper4', 'slate1', 'wood2']; // muted, so the leeches stay the loudest thing
+
+// A man in bed seen from above: head on the pillow, shirt open (or his coat over his
+// shoulders), a blanket to the waist.
 function patient(look: PatientLook) {
   const p = new Pix(PATIENT_W, PATIENT_H);
   const S: Ramp = SKIN[PALLOR_LADDER[look.pallor] ?? look.skin] ?? SKIN.B;
@@ -148,27 +182,49 @@ function patient(look: PatientLook) {
   const headY = small ? 8 : 7;
   const r = small ? 3.8 : 4.5;
 
-  // shoulders and arms in shirtsleeves
-  p.ellipse(cx, 16, half + 2.5, 5, 'linen1');
-  p.rect(cx - half - 2, 14, 3, 10, 'linen1');
-  p.rect(cx + half, 14, 3, 10, 'linen1');
-  p.rect(cx - half - 2, 23, 3, 2, S[1]); // hands
-  p.rect(cx + half, 23, 3, 2, S[1]);
+  // shoulders and arms: shirtsleeves, or his coat
+  const G = GARMENTS[look.outfit] ?? GARMENTS.shirt;
+  const sleeveL = cx - half - 2;
+  const sleeveR = cx + half;
+  p.ellipse(cx, 16, half + 2.5, 5, G.base);
+  p.rect(sleeveL, 14, 3, 10, G.base);
+  p.rect(sleeveR, 14, 3, 10, G.base);
+  p.rect(sleeveR + 1, 14, 2, 10, G.dark); // the shaded side
+  if (G.stripes) for (const x0 of [sleeveL, sleeveR]) for (let x = x0; x < x0 + 3; x += 2) p.rect(x, 14, 1, 8, G.stripes);
+  if (G.trim) p.rect(sleeveL, 22, 3, 1, G.trim).rect(sleeveR, 22, 3, 1, G.trim); // cuffs
+  if (G.epaulettes) {
+    p.rect(sleeveL - 1, 12, 4, 2, G.epaulettes).rect(sleeveR, 12, 4, 2, G.epaulettes);
+    p.set(sleeveL - 1, 14, G.epaulettes).set(sleeveL + 1, 14, G.epaulettes).set(sleeveR + 1, 14, G.epaulettes).set(sleeveR + 3, 14, G.epaulettes); // fringe
+  }
+  if (G.braid) for (const y of [15, 17, 19]) p.rect(sleeveL, y, 3, 1, G.braid).rect(sleeveR, y, 3, 1, G.braid);
+  if (G.lace) for (const y of [16, 19]) p.set(sleeveL, y + 1, G.lace).set(sleeveL + 1, y, G.lace).set(sleeveL + 2, y + 1, G.lace).set(sleeveR, y + 1, G.lace).set(sleeveR + 1, y, G.lace).set(sleeveR + 2, y + 1, G.lace);
+  if (G.buttons) for (const y of [15, 18, 21]) p.set(cx - half, y, G.buttons).set(cx + half - 1, y, G.buttons);
+  p.rect(sleeveL, 23, 3, 2, S[1]); // hands
+  p.rect(sleeveR, 23, 3, 2, S[1]);
   // bare chest where the shirt is open
   p.poly([[cx - half + 1, 13], [cx + half - 1, 13], [cx + half - 1, 25], [cx - half + 1, 25]], S[1]);
   p.rect(cx + 2, 13, half - 3, 12, S[2]);
   p.dither(cx, 13, 2, 12, S[2]);
-  p.line(cx - 3, 13, cx, 16, 'linen0').line(cx + 3, 13, cx, 16, 'linen0'); // open collar
+  p.line(cx - 3, 13, cx, 16, 'linen0').line(cx + 3, 13, cx, 16, 'linen0'); // open shirt collar
+  if (G.trim) p.rect(cx - half + 1, 12, 3, 1, G.trim).rect(cx + half - 4, 12, 3, 1, G.trim); // the coat's collar
   // army blanket: grey wool with a red stripe, from the waist down — or, if he's
   // chilled, hauled up to the chin over his chest and arms
   const top = look.cold ? 12 : 24;
-  p.rect(1, top, 20, 36 - top, 'slate2');
-  p.rect(1, top, 20, 1, 'slate1');
-  p.rect(1, top + 4, 20, 2, 'red1');
-  p.dither(13, top + 1, 8, 35 - top, 'slate1');
+  const B = BLANKETS[look.blanket] ?? BLANKETS.army;
+  p.rect(1, top, 20, 36 - top, B.ground);
+  if (look.blanket === 'check') {
+    p.map((x, y, c) => (y >= top && c === B.ground && ((x >> 1) + ((y - top) >> 1)) % 2 === 0 ? B.stripe : undefined));
+  } else if (look.blanket === 'patch') {
+    p.map((x, y, c) => (y >= top && c === B.ground ? PATCHES[((x >> 2) * 7 + ((y - top) >> 2) * 3) % PATCHES.length] : undefined));
+    for (let x = 1; x < 21; x += 4) p.rect(x, top, 1, 36 - top, 'wood1'); // the seams
+  } else {
+    p.rect(1, top + 4, 20, 2, B.stripe);
+  }
+  p.rect(1, top, 20, 1, B.shade);
+  p.dither(13, top + 1, 8, 35 - top, B.shade, { only: (x, y, c) => c === B.ground });
   if (look.cold) {
     p.rect(cx - half - 1, top - 1, 3, 2, S[1]).rect(cx + half - 1, top - 1, 3, 2, S[1]); // fists clutching the edge
-    p.dither(2, top + 7, 18, 10, 'slate1', { phase: 1 }); // rucked-up folds
+    p.dither(2, top + 7, 18, 10, B.shade, { phase: 1, only: (x, y, c) => c === B.ground }); // rucked-up folds
   }
   // head on the pillow
   p.ellipse(cx, headY, r, r + 0.6, S[1]);
@@ -190,13 +246,37 @@ function patient(look: PatientLook) {
   const mouthY = headY + Math.round(r) - 1;
   p.rect(cx - 1, mouthY, 2, 1, look.cold ? 'blue0' : look.pallor >= 2 ? S[3] : 'red1');
   if (look.cold) p.set(cx - 2, mouthY, 'blue1').set(cx + 1, mouthY, 'blue1'); // chattering, blue-lipped
+  if (look.beard && !small) {
+    p.ellipse(cx, headY + r * 0.55, r * 0.9, r * 0.6, H[1], { only: (x, y) => y >= headY + 1 }); // a full beard
+    p.rect(cx - 1, mouthY, 2, 1, look.cold ? 'blue0' : 'red1'); // the mouth in it
+  }
   if (look.moustache && !small) p.rect(cx - 2, mouthY - 1, 4, 1, H[1]);
+  // on his head
+  const crown = headY - r;
+  if (look.hat === 'nightcap') {
+    // a white cotton nightcap, its tail flopped onto the pillow, a red tassel
+    p.ellipse(cx, headY - r * 0.55, r + 0.7, r * 0.65, 'linen0', { only: (x, y) => y < headY - 0.5 });
+    p.dither(cx + 1, crown - 1, 5, 4, 'linen1', { only: (x, y, c) => c === 'linen0' });
+    p.poly([[cx + r - 1.5, crown], [cx + r + 4, crown + 1], [cx + r + 3, crown + 3.5], [cx + r - 1.5, crown + 2.5]], 'linen1');
+    p.set(cx + r + 4, crown + 3, 'red2');
+  } else if (look.hat === 'forage') {
+    // a soldier's bonnet de police: blue cloth, red piping, a brass tassel at the front
+    p.ellipse(cx, headY - r * 0.55, r + 0.5, r * 0.6, 'navy1', { only: (x, y) => y < headY - 0.5 });
+    p.rect(cx - Math.round(r), headY - 2, Math.round(r) * 2 + 1, 1, 'red2');
+    p.set(cx - 1, crown - 1, 'red2').set(cx, crown - 1, 'red2');
+    p.set(cx - Math.round(r) - 1, headY - 1, 'brass2').set(cx - Math.round(r) - 1, headY, 'brass1');
+  } else if (look.hat === 'bandage') {
+    // a head wound, bound round the brow
+    p.rect(cx - Math.round(r), headY - 3, Math.round(r) * 2 + 1, 2, 'linen0');
+    p.set(cx + 2, headY - 3, 'red2').set(cx + 3, headY - 3, 'red1').set(cx + 2, headY - 2, 'red1');
+    p.set(cx + Math.round(r) + 1, headY - 3, 'linen1').set(cx + Math.round(r) + 2, headY - 2, 'linen1'); // the knot
+  }
   if (look.sweat) p.set(cx - r - 1, headY - 2, 'blue1').set(cx + r + 1, headY - 1, 'blue1').set(cx + r + 1, headY, 'blue0');
   return p.outline('ink');
 }
 
 export const PATIENT_TEX = (look: PatientLook) =>
-  `pt:${look.skin}:${look.hair}:${look.moustache ? 1 : 0}:${look.build}:${look.pallor}:${look.eyes}:${look.sweat ? 1 : 0}:${look.cold ? 1 : 0}`;
+  `pt:${look.skin}:${look.hair}:${look.moustache ? 1 : 0}${look.beard ? 1 : 0}:${look.hat}:${look.outfit}:${look.blanket}:${look.build}:${look.pallor}:${look.eyes}:${look.sweat ? 1 : 0}:${look.cold ? 1 : 0}`;
 
 export function ensurePatientTexture(scene: Phaser.Scene, look: PatientLook): string {
   const key = PATIENT_TEX(look);
