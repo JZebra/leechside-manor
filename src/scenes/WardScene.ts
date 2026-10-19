@@ -9,7 +9,7 @@ import { Ward, type WardEvent, type Target, type Hand } from '../model/ward';
 import type { Patient } from '../model/patient';
 import { BED, WORLD, type Layout, type StationId, type Rect } from '../model/layout';
 import { STAGE_NOTES, VERB, FAIL, SAY, CONTROLS, type Note } from '../data/lines';
-import { sfx, isMuted, setMuted, audioDebug } from '../audio/audio';
+import { sfx, isMuted, setMuted, audioDebug, startLoop, type Loop } from '../audio/audio';
 import { playMusic } from '../audio/music';
 import { FLAGS } from '../flags';
 import { fitCamera, text, sprite, place, panel, STAGE } from '../ui/view';
@@ -90,6 +90,9 @@ export class WardScene extends Phaser.Scene {
   private dayIndex = 0;
   private orderlySprites = new Map<number, Phaser.GameObjects.Image>();
   private stars!: Phaser.GameObjects.Image;
+  private stepIn = 0; // seconds to the next footstep
+  private heartIn = 0; // seconds to the next heartbeat
+  private kettle: Loop | null = null; // the stove simmering
 
   constructor() {
     super('ward');
@@ -121,6 +124,14 @@ export class WardScene extends Phaser.Scene {
     this.orderlySprites.clear();
     this.trail = [];
     this.recentSays = [];
+
+    this.stepIn = 0;
+    this.heartIn = 0;
+    this.kettle = null;
+    this.events.once('shutdown', () => {
+      this.kettle?.stop();
+      this.kettle = null;
+    });
 
     this.buildRoom();
     this.buildHud();
@@ -281,8 +292,48 @@ export class WardScene extends Phaser.Scene {
     }
 
     events.push(...ward.tick(dt));
+    this.ambience(real);
     this.handle(events);
     this.render();
+  }
+
+  // Sounds that follow the state of the ward rather than single events: the doctor's
+  // footsteps, a slow heartbeat while any man is near fainting, the kettle on the stove.
+  private ambience(real: number) {
+    const ward = this.ward;
+    const d = ward.doctor;
+    if (d.moving && d.dazed <= 0) {
+      this.stepIn -= real;
+      if (this.stepIn <= 0) {
+        sfx('footstep');
+        this.stepIn = ward.hand?.kind === 'stretcher' ? 0.42 : 0.3;
+      }
+    } else this.stepIn = 0.08; // the first step lands just after he sets off
+
+    // the worst man in the blue sets the beat: slower and lower the nearer he is to fainting
+    let worst = -1;
+    for (const b of ward.beds) {
+      const p = b.patient;
+      if (!p?.active || b.leaving > 0 || p.zone() !== 'blue') continue;
+      const [, g1] = p.spec.green;
+      worst = Math.max(worst, Math.min(1, (p.blood - g1) / (p.spec.faintAt - g1)));
+    }
+    if (worst >= 0) {
+      this.heartIn -= real;
+      if (this.heartIn <= 0) {
+        const rate = 1 - 0.18 * worst;
+        sfx('heartbeat', { rate, vol: 0.55 + 0.45 * worst });
+        this.heartIn = 1.35 / rate + 0.45 * worst;
+      }
+    } else this.heartIn = 0;
+
+    // the kettle: always faintly there, louder as he nears the stove
+    if (!this.kettle) this.kettle = startLoop('boilLoop', 0);
+    if (this.kettle) {
+      const st = this.L.stations.stove.box;
+      const dist = Math.hypot(d.x - (st.x + st.w / 2), d.y - (st.y + st.h));
+      this.kettle.setVolume(0.05 + 0.3 * Math.max(0, 1 - dist / 90));
+    }
   }
 
   // One press of E: dismiss a note, or act on the target right now (its sound plays at once).
@@ -313,18 +364,22 @@ export class WardScene extends Phaser.Scene {
           sfx('door', { minGap: 0.3 });
           break;
         case 'gaveUp':
-          sfx('door');
+          sfx('doorClose');
           if (e.bed != null) this.sayAt(this.ward.bedRect(e.bed), `${SAY.walkedOut} ${e.fee} fr`, 'bad');
           else this.say(`${SAY.gaveUpQueue} ${e.fee} fr`, 20, 40, 'bad');
           break;
         case 'take':
-          sfx('pick');
+          if (e.what === 'lint') sfx('cloth');
+          else if (e.what === 'bottle') {
+            sfx('boil');
+            sfx('pour', { vol: 0.6 });
+          } else sfx('pick');
           break;
         case 'putBack':
           sfx(e.what === 'leech' ? 'clink' : 'pick');
           break;
         case 'attach':
-          sfx('squelch');
+          sfx(e.wild ? 'latch' : 'squelch');
           break;
         case 'fail':
           sfx(e.fail === 'cold' ? 'refuse' : 'nope');
@@ -359,11 +414,11 @@ export class WardScene extends Phaser.Scene {
           sfx('stretcher');
           break;
         case 'deliver':
-          sfx('door');
+          sfx('doorClose');
           this.sayAt(this.L.stations.door.box, 'To the convalescents', 'info');
           break;
         case 'scoop':
-          sfx('pick');
+          sfx('scoop');
           break;
         case 'salt':
           sfx('salt');
@@ -385,13 +440,14 @@ export class WardScene extends Phaser.Scene {
           this.say(`${SAY.drain}  ${e.fee} fr`, this.L.drain.x, this.L.drain.y - 10, 'bad');
           break;
         case 'catch':
-          sfx('pick');
+          sfx('grab');
           break;
         case 'delivery':
           sfx('delivery');
           this.sayAt(this.L.stations.jar.box, SAY.delivery(e.count), 'good');
           break;
         case 'slip':
+          sfx('slipSplat');
           sfx('slip');
           sfx('thud');
           this.say(`${SAY.slip}  ${e.fee} fr${e.spilled ? ` — ${e.spilled} spilled` : ''}`, ward.doctor.x, ward.doctor.y - 26, 'bad');
@@ -593,7 +649,7 @@ export class WardScene extends Phaser.Scene {
         }
       }
 
-      // the warm glow of sugar-water
+      // the warmth of the hot-water bottle
       v.warm.setVisible(shown && p.cold && p.warmed && p.active);
       place(v.warm, px + 7, py + 8 - (Math.floor(this.t * 3) % 2));
 
@@ -817,7 +873,7 @@ function carryTexture(hand: Hand): string | null {
     case 'leech': return handKey(Math.min(3, hand.count), Math.floor(performance.now() / 260) % 2);
     case 'used': return 'item:used';
     case 'lint': return 'item:lint';
-    case 'sugar': return 'item:sugar';
+    case 'bottle': return 'item:bottle';
     case 'bdello': return 'item:bdello';
     case 'stretcher': return 'item:stretcher';
   }

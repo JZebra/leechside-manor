@@ -13,6 +13,8 @@ export const PLATE_CREDIT =
 export const FONT_CREDIT = 'Type: IM Fell English (Igino Marini) and EB Garamond (Georg Duffner, Octavio Pardo), SIL Open Font License.';
 export const MUSIC_CREDIT =
   'Music: “Ancient Rite” and “Vanishing”, Kevin MacLeod (incompetech.com). Licensed under Creative Commons: By Attribution 4.0 License, http://creativecommons.org/licenses/by/4.0/';
+export const SOUND_CREDIT =
+  'Sounds (CC0): Kenney, Fantozzi, bart, EZduzziteh, Independent.nu, sinny and TinyWorlds, via kenney.nl and OpenGameArt.';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -26,7 +28,7 @@ export class TitleScene extends Phaser.Scene {
     const g = this.add.graphics();
 
     // the plate, framed in ink
-    const ph = 600;
+    const ph = 580;
     let pw = 560;
     if (this.textures.exists('plate')) {
       const src = this.textures.get('plate').getSourceImage() as HTMLImageElement;
@@ -34,8 +36,8 @@ export class TitleScene extends Phaser.Scene {
       g.fillStyle(hex('ink')).fillRect(54, 54, pw + 12, ph + 12);
       this.add.image(60, 60, 'plate').setOrigin(0).setDisplaySize(pw, ph);
     }
-    text(this, 60, 666, '“Le ixe chapitre contient le cas de Galerius … empereur des Rommains.”', { size: 17, italic: true, color: 'wood3' });
-    text(this, 60, 690, MUSIC_CREDIT, { size: 11, color: 'paper4', wrap: pw });
+    text(this, 60, 650, '“Le ixe chapitre contient le cas de Galerius … empereur des Rommains.”', { size: 17, italic: true, color: 'wood3' });
+    text(this, 60, 676, `${MUSIC_CREDIT} ${SOUND_CREDIT}`, { size: 11, color: 'paper4', wrap: pw });
 
     const x = 60 + pw + 50;
     const w = STAGE.w - x - 60;

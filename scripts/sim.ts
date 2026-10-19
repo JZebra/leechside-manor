@@ -83,7 +83,7 @@ class Driver {
   stow() {
     const h = this.w.hand;
     if (!h) return;
-    const home: Record<string, StationId> = { leech: 'jar', lint: 'cupboard', sugar: 'stove', bdello: 'stand', used: 'bucket', stretcher: 'door' };
+    const home: Record<string, StationId> = { leech: 'jar', lint: 'cupboard', bottle: 'stove', bdello: 'stand', used: 'bucket', stretcher: 'door' };
     this.toStation(home[h.kind]);
     for (let n = 0; n < 4 && this.w.hand; n++) this.act(this.station(home[h.kind]));
   }
@@ -136,7 +136,7 @@ function makeBot(opts: { leechesFor: (p: Patient) => number; careful: boolean })
       // 3. the careful warm a chilled man before anything else
       const chilled = active.find((x) => x.p!.chilled);
       if (opts.careful && chilled) {
-        if (w.hand?.kind !== 'sugar') {
+        if (w.hand?.kind !== 'bottle') {
           d.stow();
           d.toStation('stove');
           d.act(d.station('stove'));
@@ -179,7 +179,7 @@ function makeBot(opts: { leechesFor: (p: Patient) => number; careful: boolean })
         }
         d.toBed(x.i);
         if (x.p!.chilled) {
-          // refused: back with the leeches, then sugar-water
+          // refused: back with the leeches, then a hot-water bottle
           d.act(d.bed(x.i));
           d.stow();
           d.toStation('stove');

@@ -30,7 +30,7 @@ function context(): AudioContext | null {
   try {
     ctx = new AC({ latencyHint: 'interactive' });
     master = ctx.createGain();
-    master.gain.value = 0.8;
+    master.gain.value = muted ? 0 : 0.8;
     master.connect(ctx.destination);
   } catch {
     ctx = null;
@@ -132,12 +132,17 @@ function playBuffer(c: AudioContext, out: AudioNode, buf: AudioBuffer, rate: num
 export const isMuted = () => muted;
 
 // For diagnosis: the context and master bus (latency figures, in-graph timing).
-export const audioDebug = () => ({ ctx, master });
+export const audioDebug = () => ({
+  ctx,
+  master,
+  files: Object.fromEntries(Object.entries(fileBuffers).map(([k, v]) => [k, v?.length ?? 0])), // decoded takes per sound
+});
 
 // M mutes everything: sound effects and music.
 export function setMuted(m: boolean) {
   muted = m;
   setMusicMuted(m);
+  if (master) master.gain.value = m ? 0 : 0.8; // silences running loops too
   try {
     localStorage.setItem(MUTE_KEY, m ? '1' : '0');
   } catch {
@@ -145,8 +150,9 @@ export function setMuted(m: boolean) {
   }
 }
 
-// vol scales one play; minGap (s) stops a sound stacking when many things happen at once.
-export function sfx(name: SoundName, opts: { vol?: number; minGap?: number } = {}) {
+// vol scales one play; rate sets the pitch (instead of the random vary); minGap (s) stops a
+// sound stacking when many things happen at once.
+export function sfx(name: SoundName, opts: { vol?: number; minGap?: number; rate?: number } = {}) {
   if (muted) return;
   const c = context();
   const s = spec(name);
@@ -155,16 +161,44 @@ export function sfx(name: SoundName, opts: { vol?: number; minGap?: number } = {
   if (opts.minGap && now - (lastPlayed[name] ?? -1) < opts.minGap) return;
   lastPlayed[name] = now;
   if (c.state === 'suspended') c.resume().catch(() => {});
-  const rate = 1 + (Math.random() * 2 - 1) * (s.vary || 0);
+  const rate = opts.rate ?? 1 + (Math.random() * 2 - 1) * (s.vary || 0);
   const vol = opts.vol ?? 1;
   try {
     const files = fileBuffers[name];
-    if (files && files.length) return playBuffer(c, master, files[Math.floor(Math.random() * files.length)], rate, vol);
+    if (files && files.length) return playBuffer(c, master, files[Math.floor(Math.random() * files.length)], rate, vol * (s.vol ?? 1));
     if (s.noise) return playNoise(c, master, s.noise, rate, vol);
     const buf = synthBuffer(name);
     if (buf) playBuffer(c, master, buf, rate, vol);
   } catch {
     /* never let audio break the game */
+  }
+}
+
+// A recording played on a loop (the kettle simmering). Returns null until the file has
+// loaded — call again later. The handle sets the loop's level and stops it.
+export interface Loop { setVolume(v: number): void; stop(): void }
+export function startLoop(name: SoundName, vol = 0): Loop | null {
+  const c = ctx;
+  const buf = fileBuffers[name]?.[0];
+  if (!c || !master || !buf) return null;
+  try {
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const g = c.createGain();
+    g.gain.value = vol;
+    src.connect(g).connect(master);
+    src.start();
+    const base = spec(name).vol ?? 1;
+    return {
+      setVolume: (v: number) => g.gain.setTargetAtTime(v * base, c.currentTime, 0.15),
+      stop: () => {
+        try { src.stop(); } catch { /* already stopped */ }
+        src.disconnect();
+      },
+    };
+  } catch {
+    return null;
   }
 }
 

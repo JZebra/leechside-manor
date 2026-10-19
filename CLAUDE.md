@@ -33,6 +33,11 @@ The design brief is `BRIEF.md`.
 - `src/art/` — `palette.ts` (Thirty Leeches palette + additions), `pix.ts` (palette-locked buffer),
   `sprites.ts` (every sprite drawn procedurally and registered as a texture).
 - `src/audio/` — Thirty Leeches' sound system: file → filtered noise → jsfxr; `sounds.ts` lists them.
+  Recordings (CC0, credited in `CREDITS.md`) live in `public/sfx/` as mono 96 kbps MP3s, peak-normalised
+  and trimmed; a sound's `vol` places it in the mix and its synth stays as the fallback. `startLoop()`
+  plays a looping recording (the kettle; a WAV, since MP3 padding clicks at the seam). The ward's
+  `ambience()` drives footsteps, the heartbeat (worst man in the blue sets tempo and pitch) and the
+  kettle's level (louder near the stove).
   `music.ts`: looping tracks from `public/music/` (title: "Ancient Rite", ward: "Vanishing", Kevin
   MacLeod, CC BY 4.0 — credit kept on the title page and in `CREDITS.md`), crossfaded per scene,
   unlocked on the first key/click (all tracks primed then, for Safari), muted with M. Re-encode new

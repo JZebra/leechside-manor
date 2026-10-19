@@ -26,7 +26,7 @@ dead, Leech Clinic is a fast one about keeping six beds bleeding at the right ra
 ## Playtest revisions (after the first build)
 
 - **Chilled patients replace stubborn leeches.** A cold man (blanket to the chin, shivering, blue
-  lips) takes no leech until warmed with sugar-water; leeches in hand are a plain count (up to three;
+  lips) takes no leech until warmed with a hot-water bottle filled at the stove; leeches in hand are a plain count (up to three;
   E at the jar with a full hand pours them back).
 - **Three short days** instead of one long shift: Day 1 Saint-Côme (anaemic men at noon); Day 2
   Saint-Louis, a busier seven-bed ward whose orderlies cross the aisles and block the doctor, with

@@ -161,14 +161,14 @@ describe('the ward', () => {
     expect(w.interact(t)).toEqual([{ kind: 'fail', fail: 'handsFull', target: t }]);
   });
 
-  it('a chilled man takes no leech until warmed with sugar-water', () => {
+  it('a chilled man takes no leech until warmed with a hot-water bottle', () => {
     const w = new Ward('cold', DAY2);
     const p = untilPatient(w, 0);
     Object.defineProperty(p, 'cold', { value: true });
     w.hand = { kind: 'leech', count: 2 };
     byBed(w, 0);
     expect(w.target()?.check).toEqual({ ok: false, fail: 'cold' });
-    w.hand = { kind: 'sugar' };
+    w.hand = { kind: 'bottle' };
     expect(w.target()?.check).toEqual({ ok: true, verb: 'warm' });
     press(w);
     expect(p.warmed).toBe(true);
@@ -271,7 +271,7 @@ describe('the ward', () => {
   it('every carried thing has somewhere to go (no softlocks)', () => {
     const w = new Ward('homes', DAY2);
     w.skipTo('machine');
-    const homes = { leech: 'jar', lint: 'cupboard', sugar: 'stove', bdello: 'stand', used: 'bucket' } as const;
+    const homes = { leech: 'jar', lint: 'cupboard', bottle: 'stove', bdello: 'stand', used: 'bucket' } as const;
     for (const [kind, station] of Object.entries(homes)) {
       w.hand = kind === 'used' ? { kind: 'used', count: 2 } : kind === 'leech' ? { kind: 'leech', count: 3 } : ({ kind } as never);
       if (kind === 'bdello') w.deviceOnStand = false;

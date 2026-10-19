@@ -37,7 +37,7 @@ export class Patient {
   wounds = 0; // open bites still bleeding
   leeches: (Attached | null)[];
   readonly cold: boolean; // chilled: no leech will take until he's warmed
-  warmed = false; // sugar-water dabbed on
+  warmed = false; // a hot-water bottle tucked in
   patience: number;
   panic = 0;
   faintCause: FaintCause | null = null;
@@ -84,7 +84,7 @@ export class Patient {
     if (this.state === 'waiting') this.state = 'treating';
   }
 
-  // Leeches won't take on cold skin (19th-c. manuals: warm it, dab it with milk or sugar-water).
+  // Leeches won't take on cold skin (19th-c. manuals: warm it first).
   get chilled(): boolean {
     return this.cold && !this.warmed;
   }

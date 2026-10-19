@@ -309,12 +309,18 @@ function lint() {
   return p.outline('ink');
 }
 
-function sugarWater() {
-  const p = new Pix(13, 12);
-  p.ellipse(6.5, 8, 5.5, 3, 'wood3');
-  p.ellipse(6.5, 7, 4.5, 1.8, 'glass1');
-  p.ellipse(6.5, 7, 2, 0.8, 'linen0');
-  p.set(4, 3, 'paper0').set(5, 2, 'paper0').set(8, 3, 'paper0').set(9, 1, 'paper0'); // steam
+// A stoneware hot-water bottle, fresh from the kettle: buff body, brown-glazed
+// shoulder, a cork stopper, and steam curling off it.
+function hotWaterBottle() {
+  const p = new Pix(13, 15);
+  p.ellipse(6.5, 10, 5, 4.5, 'paper3'); // body
+  p.rect(2, 8, 10, 3, 'paper3');
+  p.ellipse(6.5, 7.5, 4.5, 2.2, 'wood3'); // glazed shoulder
+  p.rect(5, 4, 3, 3, 'wood3'); // neck
+  p.rect(5, 3, 3, 1, 'wood1'); // cork
+  p.dither(8, 8, 4, 6, 'paper4', { only: (x, y, c) => c === 'paper3' });
+  p.set(3, 9, 'paper0').set(3, 10, 'paper0'); // a glint
+  p.set(4, 1, 'paper0').set(5, 0, 'paper0').set(8, 1, 'paper0').set(9, 0, 'paper0'); // steam
   return p.outline('ink');
 }
 
@@ -565,7 +571,7 @@ export function registerTextures(scene: Phaser.Scene) {
     add(escapeKey(d, 1), leech({ angle, length: 8, girth: 2.3, bend: 2.2, mouth: 'shut' }, 15));
   }
   add('item:lint', lint());
-  add('item:sugar', sugarWater());
+  add('item:bottle', hotWaterBottle());
   add('item:bdello', bdellometer());
   for (let s = 0; s < 2; s++) for (let f = 0; f <= 4; f++) add(`cup:${s}:${f}`, cupOnChest(s, f / 4));
   add('item:stretcher', stretcher());

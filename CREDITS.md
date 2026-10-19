@@ -22,4 +22,16 @@ IM Fell English by Igino Marini; EB Garamond by Georg Duffner and Octavio Pardo.
 Open Font License.
 
 ## Sound effects
-Synthesised in the browser (filtered noise and jsfxr); no recordings.
+Recordings, all CC0 (public domain; credit not required, gladly given). Trimmed, levelled and
+re-encoded for the game; files in `public/sfx/`.
+
+- Doors (opening, closing) and cloth rustles: **Kenney**, *RPG Audio* — https://kenney.nl/assets/rpg-audio
+- Footsteps on stone: **Fantozzi** (via qubodup), *Fantozzi's Footsteps* — https://opengameart.org/content/fantozzis-footsteps-grasssand-stone
+- Slow heartbeat: **bart**, *Heartbeat sounds* — https://opengameart.org/content/heartbeat-sounds
+- Leech squelches and pops: **EZduzziteh**, *Squish Sounds Effects* — https://opengameart.org/content/squish-sounds-effects
+- Wet splats (scooping fed leeches, slipping on one): **Independent.nu** (via qubodup), *8 wet squish, slurp impacts* — https://opengameart.org/node/2547
+- Scissors (snipped into the lint sounds): **sinny**, *various scissors* — https://opengameart.org/node/179374
+- Boiling water: **TinyWorlds**, *boiling water loops* — https://opengameart.org/content/boiling-water-loops
+
+Everything else (bells, coins, the pump, notes, warnings) is synthesised in the browser with
+filtered noise and jsfxr.

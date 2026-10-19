@@ -18,7 +18,7 @@ export type Hand =
   | { kind: 'leech'; count: number } // a handful of hungry leeches
   | { kind: 'used'; count: number } // fed ones, for the salt
   | { kind: 'lint' }
-  | { kind: 'sugar' }
+  | { kind: 'bottle' } // a stoneware hot-water bottle, filled at the stove
   | { kind: 'bdello' }
   | { kind: 'stretcher'; patient: Patient };
 
@@ -319,8 +319,8 @@ export class Ward {
           if (hand?.kind === 'lint') return ok('putBack');
           return hand ? no('handsFull') : ok('takeLint');
         case 'stove':
-          if (hand?.kind === 'sugar') return ok('putBack');
-          return hand ? no('handsFull') : ok('takeSugar');
+          if (hand?.kind === 'bottle') return ok('putBack');
+          return hand ? no('handsFull') : ok('takeBottle');
         case 'bucket':
           if (hand?.kind === 'used') return ok('salt');
           if (hand?.kind === 'leech') return no('saltHungry');
@@ -347,7 +347,7 @@ export class Ward {
         return ok('apply');
       case 'lint':
         return ok('bandage');
-      case 'sugar':
+      case 'bottle':
         return p.chilled ? ok('warm') : no('notCold');
       case 'bdello':
         return ok('pump');
@@ -384,9 +384,9 @@ export class Ward {
         this.hand = { kind: 'lint' };
         out.push({ kind: 'take', what: 'lint' });
         break;
-      case 'takeSugar':
-        this.hand = { kind: 'sugar' };
-        out.push({ kind: 'take', what: 'sugar' });
+      case 'takeBottle':
+        this.hand = { kind: 'bottle' };
+        out.push({ kind: 'take', what: 'bottle' });
         break;
       case 'takeDevice':
         this.deviceOnStand = false;
