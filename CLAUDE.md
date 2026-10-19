@@ -39,5 +39,7 @@ The design brief is `BRIEF.md`.
 ## Debug
 - `?seed=abc` fixed shift · `?fast=4` clock 4× · `?stage=machine` start at a stage · `?notes=0` no notes.
 - `window.ward` is the live model in the browser console.
-- Phaser drops a key tap whose keydown and keyup land in one frame, so E/Space presses are queued
-  from keydown events (`pressQueued`).
+- E/Space/Enter in the ward are handled on the browser's own keydown (`WardScene.press`), not Phaser's
+  keyboard queue: Phaser delivers keys on the next game step and drops a tap that ends within a frame.
+- The Claude desktop app's browser pane reports ~2 s of audio output latency (`AudioContext.outputLatency`);
+  judge sound timing in a real browser.

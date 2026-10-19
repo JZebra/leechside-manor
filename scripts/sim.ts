@@ -64,7 +64,7 @@ class Driver {
     if (!h) return;
     const home: Record<string, StationId> = { leech: 'jar', lint: 'cupboard', sugar: 'stove', bdello: 'stand', used: 'bucket', stretcher: 'door' };
     this.toStation(home[h.kind]);
-    this.act(this.station(home[h.kind]));
+    for (let n = 0; n < 4 && this.w.hand; n++) this.act(this.station(home[h.kind]));
   }
 }
 

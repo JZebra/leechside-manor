@@ -19,13 +19,14 @@ const synthBuffers: Partial<Record<SoundName, AudioBuffer | null>> = {};
 const fileBuffers: Partial<Record<SoundName, AudioBuffer[]>> = {};
 const noiseBuffers: Record<string, AudioBuffer> = {};
 const lastPlayed: Partial<Record<SoundName, number>> = {};
+const MAX_ATTACK = 0.015; // seconds
 
 function context(): AudioContext | null {
   if (ctx) return ctx;
   const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AC) return null;
   try {
-    ctx = new AC();
+    ctx = new AC({ latencyHint: 'interactive' });
     master = ctx.createGain();
     master.gain.value = 0.8;
     master.connect(ctx.destination);
@@ -91,9 +92,12 @@ function playNoise(c: AudioContext, out: AudioNode, n: NoiseSpec, rate: number, 
   bp.frequency.setValueAtTime(f0 * rate, t0);
   bp.frequency.exponentialRampToValueAtTime(f1 * rate, t0 + dur * 0.45);
   bp.frequency.exponentialRampToValueAtTime(f2 * rate, t0 + dur);
+  // A short linear attack: an exponential one from silence is inaudible for most of its
+  // length, so the sound seemed to arrive late. Long swells are capped for the same reason.
+  const attack = Math.min(n.attack ?? 0.01, MAX_ATTACK, dur * 0.5);
   const env = c.createGain();
-  env.gain.setValueAtTime(0.0001, t0);
-  env.gain.exponentialRampToValueAtTime(n.vol * vol, t0 + Math.min(n.attack ?? 0.02, dur * 0.8));
+  env.gain.setValueAtTime(0, t0);
+  env.gain.linearRampToValueAtTime(n.vol * vol, t0 + attack);
   env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
   let node: AudioNode = src.connect(bp).connect(env);
   if (n.am) {
@@ -157,12 +161,29 @@ export function sfx(name: SoundName, opts: { vol?: number; minGap?: number } = {
   }
 }
 
+// Render every synthesized sound ahead of time, a few per tick, so no first play stalls.
+function warm(c: AudioContext) {
+  const names = Object.keys(SOUNDS) as SoundName[];
+  const step = () => {
+    for (const name of names.splice(0, 4)) {
+      const s = spec(name);
+      if (s.def) synthBuffer(name);
+      if (s.noise) noiseBuffer(c, s.noise.crackle);
+    }
+    if (names.length) setTimeout(step, 0);
+  };
+  step();
+}
+
 // Browsers only allow audio after a gesture: warm up on the first one.
 export function installAudioUnlock() {
   const unlock = () => {
     const c = context();
     if (c && c.state === 'suspended') c.resume().catch(() => {});
-    if (c) loadFiles();
+    if (c) {
+      loadFiles();
+      warm(c);
+    }
     window.removeEventListener('pointerdown', unlock);
     window.removeEventListener('keydown', unlock);
   };

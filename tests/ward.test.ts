@@ -176,7 +176,11 @@ describe('the ward', () => {
     press(w);
     press(w);
     expect(w.hand).toEqual({ kind: 'leech', held: [false, false, false] });
-    expect(w.target()?.check).toEqual({ ok: false, fail: 'handful' });
+    const full = w.supply.jar;
+    expect(w.target()?.check).toEqual({ ok: true, verb: 'putBackAll' }); // a full hand pours back
+    press(w);
+    expect(w.hand).toBeNull();
+    expect(w.supply.jar).toBe(full + 3);
     w.hand = { kind: 'leech', held: [true, false] };
     const jar = w.supply.jar;
     expect(w.target()?.check).toEqual({ ok: true, verb: 'putBackSulky' });

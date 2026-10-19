@@ -84,7 +84,6 @@ export class WardScene extends Phaser.Scene {
   private pumpSoundIn = 0;
   private ending = false;
   private recentSays: { x: number; y: number; t: number }[] = [];
-  private pressQueued = false; // a keydown, kept until the next frame (a quick tap can't be lost)
 
   constructor() {
     super('ward');
@@ -106,7 +105,6 @@ export class WardScene extends Phaser.Scene {
     this.escapeeSprites.clear();
     this.trail = [];
     this.recentSays = [];
-    this.pressQueued = false;
 
     this.buildRoom();
     this.buildHud();
@@ -185,12 +183,13 @@ export class WardScene extends Phaser.Scene {
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E,SPACE') as Keys;
     kb.addCapture('UP,DOWN,LEFT,RIGHT,SPACE');
-    const press = (e: KeyboardEvent) => {
-      if (!e.repeat) this.pressQueued = true;
+    // E / Space / Enter act on the browser's keydown at once (Phaser would deliver it on the
+    // next game step, and drops a tap whose keyup lands in the same frame).
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.repeat && (e.code === 'KeyE' || e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter')) this.press();
     };
-    kb.on('keydown-E', press);
-    kb.on('keydown-SPACE', press);
-    kb.on('keydown-ENTER', press);
+    window.addEventListener('keydown', onKey);
+    this.events.once('shutdown', () => window.removeEventListener('keydown', onKey));
     kb.on('keydown-ESC', () => this.togglePause());
     kb.on('keydown-P', () => this.togglePause());
     kb.on('keydown-M', () => {
@@ -211,11 +210,7 @@ export class WardScene extends Phaser.Scene {
     const real = Math.min(deltaMs / 1000, 0.1);
     this.t += real;
     const k = this.keys;
-    const pressed = this.pressQueued;
-    this.pressQueued = false;
-
     if (this.noteView) {
-      if (pressed && this.t - this.noteShownAt > 0.35) this.closeNote();
       this.render();
       return;
     }
@@ -255,15 +250,23 @@ export class WardScene extends Phaser.Scene {
       const ix = (k.D.isDown || k.RIGHT.isDown ? 1 : 0) - (k.A.isDown || k.LEFT.isDown ? 1 : 0);
       const iy = (k.S.isDown || k.DOWN.isDown ? 1 : 0) - (k.W.isDown || k.UP.isDown ? 1 : 0);
       ward.walk(ix, iy, real);
-      if (pressed) {
-        const tg = ward.target();
-        if (tg && !(tg.check.ok && tg.check.verb === 'pump')) events.push(...ward.interact(tg.target));
-      }
     }
 
     events.push(...ward.tick(dt));
     this.handle(events);
     this.render();
+  }
+
+  // One press of E: dismiss a note, or act on the target right now (its sound plays at once).
+  private press() {
+    if (!this.scene.isActive()) return;
+    if (this.noteView) {
+      if (this.t - this.noteShownAt > 0.35) this.closeNote();
+      return;
+    }
+    if (this.paused || this.ending || this.notes.length) return;
+    const tg = this.ward.target();
+    if (tg && !(tg.check.ok && tg.check.verb === 'pump')) this.handle(this.ward.interact(tg.target));
   }
 
   // ── Events → sound and words ──────────────────────────────────────────────

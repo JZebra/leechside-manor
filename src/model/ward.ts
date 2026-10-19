@@ -206,7 +206,7 @@ export class Ward {
         case 'jar':
           if (hand?.kind === 'leech') {
             if (hand.held.some((s) => s)) return ok('putBackSulky'); // the stubborn ones go back first
-            if (hand.held.length >= CONFIG.doctor.handful) return no('handful');
+            if (hand.held.length >= CONFIG.doctor.handful) return ok('putBackAll'); // a full hand empties
           } else if (hand) return no('handsFull');
           if (this.supply.jar <= 0) return no(this.supply.phase === 'active' ? 'jarShortage' : 'jarEmpty');
           return ok('takeLeech');
@@ -279,6 +279,7 @@ export class Ward {
         out.push({ kind: 'putBack', what: 'leech' });
         break;
       }
+      case 'putBackAll':
       case 'putBack':
         if (hand?.kind === 'leech') this.supply.give(hand.held.length);
         if (hand?.kind === 'bdello') this.deviceOnStand = true;

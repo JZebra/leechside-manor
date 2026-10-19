@@ -17,7 +17,7 @@ export const STAGE_NOTES: Record<StageId, Note> = {
     body: [
       '“Thirty leeches, gentlemen, and lint when they drop. Every fever is an inflamed gut; bleed the gut and the fever goes.”',
     ],
-    hint: 'Take a leech from Madame Ricard’s jar and set it on a man. The bar under his bed fills as he bleeds: press lint from the cupboard on him in the GREEN. Fed leeches fall to the floor; sweep them into the salt bucket.',
+    hint: 'Take leeches from Madame Ricard’s jar (up to three; E again with a full hand puts them back) and set them on a man. The bar under his bed fills as he bleeds: press lint from the cupboard on him in the GREEN. Fed leeches fall to the floor; sweep them into the salt bucket.',
   },
   frail: {
     speaker: 'Sister Marthe',
@@ -59,6 +59,7 @@ export const VERB = {
   takeLeech: 'Take a leech',
   putBack: 'Put it back',
   putBackSulky: 'Put the stubborn one back',
+  putBackAll: 'Put them all back',
   takeLint: 'Take lint',
   takeSugar: 'Take sugar-water',
   takeDevice: 'Take the bdellometer',
