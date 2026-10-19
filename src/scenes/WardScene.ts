@@ -2,14 +2,14 @@
 // live in src/model; this file only turns state and events into pixels and sound.
 
 import Phaser from 'phaser';
-import { CONFIG, type StageId } from '../config';
+import { CONFIG } from '../config';
 import { PIXEL, hex, type PaletteKey } from '../art/palette';
 import { ensurePatientTexture, LEECH_SLOTS, SATED, escapeKey, escapeDir, handKey, type PatientLook } from '../art/sprites';
 import { Ward, type WardEvent, type Target, type Hand } from '../model/ward';
 import type { Patient } from '../model/patient';
 import { BED, WORLD, type Layout, type StationId, type Rect } from '../model/layout';
 import { STAGE_NOTES, VERB, FAIL, SAY, CONTROLS, type Note } from '../data/lines';
-import { sfx, isMuted, setMuted, audioDebug, startLoop, type Loop } from '../audio/audio';
+import { sfx, isMuted, setMuted, audioDebug } from '../audio/audio';
 import { playMusic } from '../audio/music';
 import { FLAGS } from '../flags';
 import { fitCamera, text, sprite, place, panel, STAGE } from '../ui/view';
@@ -18,14 +18,6 @@ const P = PIXEL;
 const DEPTH = { floor: 0, floorItem: 2, world: 10, overlay: 9000, prompt: 9500, say: 9600, hud: 10000, note: 20000 };
 type Tone = 'good' | 'bad' | 'info' | 'cold';
 const TONE: Record<Tone, PaletteKey> = { good: 'meterGreen1', bad: 'red3', info: 'paper0', cold: 'meterBlue1' };
-const STAGE_TITLE: Record<StageId, string> = {
-  basics: 'the basics',
-  frail: 'the pale ones',
-  promotion: 'seven beds, and orderlies',
-  machine: 'a modern miracle',
-  shortage: 'no deliveries',
-  drummers: 'boys and conscripts',
-};
 
 interface BedView {
   patient: Phaser.GameObjects.Image;
@@ -77,7 +69,7 @@ export class WardScene extends Phaser.Scene {
   private gHighlight!: Phaser.GameObjects.Graphics;
   private gTrail!: Phaser.GameObjects.Graphics;
   private prompt!: Phaser.GameObjects.Text;
-  private hud!: { clock: Phaser.GameObjects.Text; money: Phaser.GameObjects.Text; jar: Phaser.GameObjects.Text; stage: Phaser.GameObjects.Text; banner: Phaser.GameObjects.Text; jarLabel: Phaser.GameObjects.Text; salt: Phaser.GameObjects.Text; queue: Phaser.GameObjects.Text; mute: Phaser.GameObjects.Text };
+  private hud!: { clock: Phaser.GameObjects.Text; money: Phaser.GameObjects.Text; jar: Phaser.GameObjects.Text; banner: Phaser.GameObjects.Text; jarLabel: Phaser.GameObjects.Text; salt: Phaser.GameObjects.Text; queue: Phaser.GameObjects.Text; mute: Phaser.GameObjects.Text };
   private notes: Note[] = [];
   private noteView: Phaser.GameObjects.Container | null = null;
   private noteShownAt = 0;
@@ -92,7 +84,6 @@ export class WardScene extends Phaser.Scene {
   private stars!: Phaser.GameObjects.Image;
   private stepIn = 0; // seconds to the next footstep
   private heartIn = 0; // seconds to the next heartbeat
-  private kettle: Loop | null = null; // the stove simmering
 
   constructor() {
     super('ward');
@@ -127,11 +118,6 @@ export class WardScene extends Phaser.Scene {
 
     this.stepIn = 0;
     this.heartIn = 0;
-    this.kettle = null;
-    this.events.once('shutdown', () => {
-      this.kettle?.stop();
-      this.kettle = null;
-    });
 
     this.buildRoom();
     this.buildHud();
@@ -201,7 +187,6 @@ export class WardScene extends Phaser.Scene {
       clock: text(this, 1012, 36, '8:00', { font: 'display', size: 34 }).setOrigin(0, 0.5).setDepth(DEPTH.hud),
       money: text(this, 1130, 36, '0 fr', { font: 'display', size: 28, color: 'red1' }).setOrigin(0.5).setDepth(DEPTH.hud),
       jar: text(this, 1252, 36, '8', { font: 'display', size: 28 }).setOrigin(1, 0.5).setDepth(DEPTH.hud),
-      stage: text(this, 990, 72, '', { size: 15, italic: true, color: 'paper0', stroke: 'ink', strokeWidth: 4, align: 'right' }).setOrigin(1, 0).setDepth(DEPTH.hud),
       banner: text(this, 600, 36, '', { size: 19, color: 'paper0', stroke: 'ink', strokeWidth: 5, align: 'center' }).setOrigin(0.5).setDepth(DEPTH.hud),
       jarLabel: text(this, (jar.x + jar.w / 2) * P, (jar.y + 17.5) * P, '8', { font: 'display', size: 24 }).setOrigin(0.5).setDepth(DEPTH.world + 200),
       salt: text(this, (bucket.x + 10) * P, (bucket.y + 20) * P, '', { size: 14, italic: true, color: 'linen1', stroke: 'ink', strokeWidth: 4, align: 'center' }).setOrigin(0.5, 0).setDepth(DEPTH.overlay),
@@ -298,7 +283,7 @@ export class WardScene extends Phaser.Scene {
   }
 
   // Sounds that follow the state of the ward rather than single events: the doctor's
-  // footsteps, a slow heartbeat while any man is near fainting, the kettle on the stove.
+  // footsteps, and a slow heartbeat while any man is near fainting.
   private ambience(real: number) {
     const ward = this.ward;
     const d = ward.doctor;
@@ -326,14 +311,6 @@ export class WardScene extends Phaser.Scene {
         this.heartIn = 1.35 / rate + 0.45 * worst;
       }
     } else this.heartIn = 0;
-
-    // the kettle: always faintly there, louder as he nears the stove
-    if (!this.kettle) this.kettle = startLoop('boilLoop', 0);
-    if (this.kettle) {
-      const st = this.L.stations.stove.box;
-      const dist = Math.hypot(d.x - (st.x + st.w / 2), d.y - (st.y + st.h));
-      this.kettle.setVolume(0.05 + 0.3 * Math.max(0, 1 - dist / 90));
-    }
   }
 
   // One press of E: dismiss a note, or act on the target right now (its sound plays at once).
@@ -583,7 +560,6 @@ export class WardScene extends Phaser.Scene {
     this.hud.money.setText(`${ward.shift.money} fr`);
     this.hud.jar.setText(String(s.jar));
     this.hud.jarLabel.setText(String(s.jar));
-    this.hud.stage.setText(`${ward.day.title} · ${STAGE_TITLE[ward.shift.stage]}`);
     this.hud.mute.setText(isMuted() ? 'sound off (M)' : '');
     const secs = (n: number) => `${Math.max(0, Math.ceil(n))} s`;
     let banner = '';
@@ -721,9 +697,11 @@ export class WardScene extends Phaser.Scene {
       seen.add(f.id);
       let img = this.floorSprites.get(f.id);
       if (!img) {
-        img = sprite(this, `floor:used:${f.id % 4}`).setDepth(DEPTH.floorItem);
+        img = sprite(this, `floor:used:${f.id % 4}:0`).setDepth(DEPTH.floorItem);
         this.floorSprites.set(f.id, img);
       }
+      // gorged and sluggish, but still squirming: a slow wriggle, each in its own time
+      img.setTexture(`floor:used:${f.id % 4}:${Math.floor(this.t * 1.7 + f.id * 0.61) % 2}`);
       place(img, f.x - 6, f.y - 6);
     }
     for (const [id, img] of this.floorSprites) if (!seen.has(id)) { img.destroy(); this.floorSprites.delete(id); }

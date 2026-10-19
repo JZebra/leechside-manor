@@ -142,7 +142,7 @@ export const audioDebug = () => ({
 export function setMuted(m: boolean) {
   muted = m;
   setMusicMuted(m);
-  if (master) master.gain.value = m ? 0 : 0.8; // silences running loops too
+  if (master) master.gain.value = m ? 0 : 0.8;
   try {
     localStorage.setItem(MUTE_KEY, m ? '1' : '0');
   } catch {
@@ -171,34 +171,6 @@ export function sfx(name: SoundName, opts: { vol?: number; minGap?: number; rate
     if (buf) playBuffer(c, master, buf, rate, vol);
   } catch {
     /* never let audio break the game */
-  }
-}
-
-// A recording played on a loop (the kettle simmering). Returns null until the file has
-// loaded — call again later. The handle sets the loop's level and stops it.
-export interface Loop { setVolume(v: number): void; stop(): void }
-export function startLoop(name: SoundName, vol = 0): Loop | null {
-  const c = ctx;
-  const buf = fileBuffers[name]?.[0];
-  if (!c || !master || !buf) return null;
-  try {
-    const src = c.createBufferSource();
-    src.buffer = buf;
-    src.loop = true;
-    const g = c.createGain();
-    g.gain.value = vol;
-    src.connect(g).connect(master);
-    src.start();
-    const base = spec(name).vol ?? 1;
-    return {
-      setVolume: (v: number) => g.gain.setTargetAtTime(v * base, c.currentTime, 0.15),
-      stop: () => {
-        try { src.stop(); } catch { /* already stopped */ }
-        src.disconnect();
-      },
-    };
-  } catch {
-    return null;
   }
 }
 

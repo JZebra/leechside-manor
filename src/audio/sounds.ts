@@ -83,7 +83,7 @@ export const SOUNDS = {
   // a man leaving: the ward door shutting behind him
   doorClose: { file: sfx('door-close-1', 'door-close-2'), vol: 0.45, def: { wave_type: 3, p_env_sustain: 0.05, p_env_decay: 0.3, p_env_punch: 0.45, p_base_freq: 0.07, p_lpf_freq: 0.22, sound_vol: 0.3 }, vary: 0.08 },
   // the doctor's boots on the flagstones
-  footstep: { file: sfx('step-L1', 'step-L2', 'step-L3', 'step-R1', 'step-R2', 'step-R3'), vol: 0.22, noise: { dur: 0.08, attack: 0.003, band: [500, 300, 200], q: 0.8, vol: 0.25 }, vary: 0.08 },
+  footstep: { file: sfx('step-L1', 'step-L2', 'step-L3', 'step-R1', 'step-R2', 'step-R3'), vol: 0.11, noise: { dur: 0.08, attack: 0.003, band: [500, 300, 200], q: 0.8, vol: 0.25 }, vary: 0.08 },
   // a slow, failing heartbeat: a man in the blue
   heartbeat: { file: sfx('heartbeat'), vol: 0.6, def: { wave_type: 2, p_env_sustain: 0.05, p_env_decay: 0.2, p_env_punch: 0.4, p_base_freq: 0.1, p_lpf_freq: 0.2, sound_vol: 0.4 }, vary: 0 },
   // an escaped leech climbing onto a man
@@ -96,10 +96,8 @@ export const SOUNDS = {
   slipSplat: { file: sfx('slip-splat'), vol: 0.7, def: { wave_type: 3, p_env_sustain: 0.1, p_env_decay: 0.3, p_base_freq: 0.12, p_lpf_freq: 0.3, sound_vol: 0.35 }, vary: 0.08 },
   // a roll of lint taken from the cupboard
   cloth: { file: sfx('cloth-1', 'cloth-2'), vol: 0.5, noise: { dur: 0.25, attack: 0.02, band: [2000, 3000, 1500], q: 0.6, vol: 0.4 }, vary: 0.1 },
-  // the kettle at the boil, as a hot-water bottle is filled
+  // the kettle at the boil — heard only when a hot-water bottle is filled at the stove
   boil: { file: sfx('boil'), vol: 0.5, noise: { dur: 0.6, attack: 0.05, band: [700, 1100, 600], q: 0.7, vol: 0.4, crackle: 0.6 }, vary: 0.05 },
-  // the kettle simmering on the stove, all day (played as a loop; see audio.ts startLoop)
-  boilLoop: { file: 'sfx/boil-loop.wav', vol: 1 },
   // can't: a dull wooden knock
   nope: { def: { wave_type: 1, p_env_sustain: 0.03, p_env_decay: 0.12, p_base_freq: 0.18, p_lpf_freq: 0.3, sound_vol: 0.2 }, vary: 0.05 },
 } satisfies Record<string, SoundSpec>;

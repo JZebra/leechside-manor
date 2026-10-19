@@ -98,6 +98,5 @@ export class TitleScene extends Phaser.Scene {
       showMute();
       sfx('click');
     });
-    this.input.on('pointerdown', start);
   }
 }

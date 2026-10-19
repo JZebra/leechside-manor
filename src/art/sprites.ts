@@ -563,7 +563,13 @@ export function registerTextures(scene: Phaser.Scene) {
   add('item:leech', writhing(1.2, 0));
   add('item:used', leech({ angle: 0.9, length: 8, girth: 3.1, bend: 1, fed: 1, mouth: 'shut', eyes: false }, 13));
   // fed leeches on the floor: bloated, glistening, a smear of blood
-  for (let a = 0; a < 4; a++) add(`floor:used:${a}`, leech({ angle: a * 1.4 + 0.3, length: 8.5, girth: 3, bend: a % 2 ? 1.2 : -1.2, fed: 1, mouth: 'shut', eyes: false }, 13, true));
+  // two writhes each: bowed one way, then stretched and bowed the other
+  for (let a = 0; a < 4; a++) {
+    const angle = a * 1.4 + 0.3;
+    const side = a % 2 ? 1 : -1;
+    add(`floor:used:${a}:0`, leech({ angle, length: 8.5, girth: 3, bend: 1.4 * side, fed: 1, mouth: 'shut', eyes: false }, 13, true));
+    add(`floor:used:${a}:1`, leech({ angle: angle + 0.15 * side, length: 9.3, girth: 2.7, wave: 0.8 * side, bend: -0.5 * side, fed: 1, mouth: 'shut', eyes: false }, 13, true));
+  }
   // escapees: an inchworm crawl — stretched out, mouth open and questing; then hunched up
   for (let d = 0; d < ESCAPE_ANGLES; d++) {
     const angle = d * (Math.PI * 2 / ESCAPE_ANGLES);
