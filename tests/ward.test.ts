@@ -1,13 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import { Ward, type Target } from '../src/model/ward';
 import { CONFIG } from '../src/config';
-import { BEDS, BED, STATIONS, DRAIN } from '../src/model/layout';
+import { BED, type StationId } from '../src/model/layout';
 
-const at = (w: Ward, x: number, y: number) => Object.assign(w.doctor, { x, y });
-const byBed = (w: Ward, i: number) => at(w, BEDS[i].x + BED.w / 2, BEDS[i].y + BED.h + 6);
-const byStation = (w: Ward, id: keyof typeof STATIONS) => {
-  const b = STATIONS[id].box;
-  at(w, b.x + b.w / 2, b.y + b.h + 5);
+const DAY1 = 0;
+const DAY2 = 1;
+const DAY3 = 2;
+
+const at = (w: Ward, x: number, y: number, facing: 'down' | 'up' | 'side' = 'up', flip = false) =>
+  Object.assign(w.doctor, { x, y, facing, flip });
+// stand at the foot of a bed (top row) or its head (bottom row), facing it
+const byBed = (w: Ward, i: number) => {
+  const b = w.layout.beds[i];
+  return b.y < 100 ? at(w, b.x + BED.w / 2, b.y + BED.h + 11, 'up') : at(w, b.x + BED.w / 2, b.y - 2, 'down');
+};
+// stand in front of a station's base, facing it
+const byStation = (w: Ward, id: StationId) => {
+  const u = w.layout.stations[id].use;
+  at(w, u.x + u.w / 2, u.y + u.h + 3, 'up');
 };
 function press(w: Ward) {
   const t = w.target();
@@ -16,7 +26,7 @@ function press(w: Ward) {
 }
 // run the clock until bed i has a patient
 function untilPatient(w: Ward, i = 0) {
-  for (let n = 0; n < 200 && !w.beds[i].patient; n++) w.tick(0.1);
+  for (let n = 0; n < 400 && !w.beds[i].patient; n++) w.tick(0.1);
   expect(w.beds[i].patient).toBeTruthy();
   return w.beds[i].patient!;
 }
@@ -26,7 +36,7 @@ describe('the ward', () => {
     const w = new Ward('walls');
     byBed(w, 0);
     for (let i = 0; i < 60; i++) w.walk(0, -1, 0.05);
-    expect(w.doctor.y).toBeGreaterThanOrEqual(BEDS[0].y + BED.h);
+    expect(w.doctor.y).toBeGreaterThanOrEqual(w.layout.beds[0].y + BED.h);
   });
 
   it('two men come in at eight and take beds', () => {
@@ -41,7 +51,7 @@ describe('the ward', () => {
     byStation(w, 'jar');
     const jar0 = w.supply.jar;
     press(w);
-    expect(w.hand).toEqual({ kind: 'leech', held: [false] });
+    expect(w.hand).toEqual({ kind: 'leech', count: 1 });
     expect(w.supply.jar).toBe(jar0 - 1);
     byBed(w, 0);
     expect(w.target()?.check).toEqual({ ok: true, verb: 'apply' });
@@ -52,7 +62,7 @@ describe('the ward', () => {
     expect(p.attachedCount).toBe(0);
     expect(w.floor.length).toBe(1);
     const f = w.floor[0];
-    at(w, f.x, f.y);
+    at(w, f.x, f.y + 6, 'up');
     press(w);
     expect(w.hand).toEqual({ kind: 'used', count: 1 });
     byStation(w, 'bucket');
@@ -61,6 +71,20 @@ describe('the ward', () => {
     const before = w.supply.jar;
     for (let i = 0; i < CONFIG.leech.recycleSeconds * 10 + 2; i++) w.tick(0.1);
     expect(w.supply.jar).toBeGreaterThan(before);
+  });
+
+  it('a handful: up to three from the jar, and a full hand pours back', () => {
+    const w = new Ward('handful');
+    byStation(w, 'jar');
+    const jar = w.supply.jar;
+    press(w);
+    press(w);
+    press(w);
+    expect(w.hand).toEqual({ kind: 'leech', count: 3 });
+    expect(w.target()?.check).toEqual({ ok: true, verb: 'putBackAll' });
+    press(w);
+    expect(w.hand).toBeNull();
+    expect(w.supply.jar).toBe(jar);
   });
 
   it('lint in the green pays the full fee', () => {
@@ -90,11 +114,12 @@ describe('the ward', () => {
     press(w);
     expect(w.hand?.kind).toBe('stretcher');
     expect(w.beds[0].patient).toBeNull();
+    at(w, 60, 160, 'side');
     const x0 = w.doctor.x;
-    w.walk(1, 0, 1);
-    expect(w.doctor.x - x0).toBeCloseTo(CONFIG.doctor.speed * CONFIG.doctor.carrying, 0);
-    const d = STATIONS.door.box;
-    at(w, d.x + d.w / 2, d.y + d.h + 6);
+    w.walk(1, 0, 0.5);
+    expect(w.doctor.x - x0).toBeCloseTo(CONFIG.doctor.speed * CONFIG.doctor.carrying * 0.5, 0);
+    const d = w.layout.stations.door.use;
+    at(w, d.x + d.w / 2, d.y + d.h + 4, 'up');
     expect(press(w)).toContainEqual({ kind: 'deliver' });
     expect(w.hand).toBeNull();
   });
@@ -102,13 +127,29 @@ describe('the ward', () => {
   it('lifting a fainted man beats sweeping the leeches at his feet', () => {
     const w = new Ward('priority');
     const p = untilPatient(w, 0);
-    p.attach({ stubborn: false });
+    p.attach();
     p.blood = p.spec.faintAt;
     w.tick(0.1);
     expect(w.floor.length).toBe(1);
-    const f = w.floor[0];
-    at(w, f.x, f.y + 3);
+    byBed(w, 0);
     expect(w.target()?.check).toEqual({ ok: true, verb: 'lift' });
+  });
+
+  it('a fed leech by the lint cupboard is picked up, not the lint (the cupboard reaches only from its base)', () => {
+    const w = new Ward('cupboard');
+    const c = w.layout.stations.cupboard;
+    // a leech on the floor just above the cupboard's sprite; the doctor beside it, facing it
+    w.floor.push({ id: 999, x: c.box.x + 10, y: c.box.y - 4, angle: 0 });
+    at(w, c.box.x + 10, c.box.y + 4, 'up');
+    expect(w.target()).toMatchObject({ target: { kind: 'used', id: 999 } });
+  });
+
+  it('a leech that has gone (caught, scooped, squashed) cannot be acted on', () => {
+    const w = new Ward('stale');
+    w.escapees.push({ id: 7, x: 50, y: 150, angle: 0, bed: null, t: 0 }, { id: 8, x: 300, y: 150, angle: 0, bed: null, t: 0 });
+    expect(w.interact({ kind: 'escapee', id: 99 })).toEqual([{ kind: 'fail', fail: 'nothing', target: { kind: 'escapee', id: 99 } }]);
+    expect(w.escapees.map((e) => e.id)).toEqual([7, 8]);
+    expect(w.check({ kind: 'used', id: 42 })).toEqual({ ok: false, fail: 'nothing' });
   });
 
   it('a failed interaction says why', () => {
@@ -120,21 +161,67 @@ describe('the ward', () => {
     expect(w.interact(t)).toEqual([{ kind: 'fail', fail: 'handsFull', target: t }]);
   });
 
-  it('a stubborn leech is refused until the man is warmed', () => {
-    const w = new Ward('stubborn');
+  it('a chilled man takes no leech until warmed with sugar-water', () => {
+    const w = new Ward('cold', DAY2);
     const p = untilPatient(w, 0);
-    w.hand = { kind: 'leech', held: [true] };
+    Object.defineProperty(p, 'cold', { value: true });
+    w.hand = { kind: 'leech', count: 2 };
     byBed(w, 0);
-    expect(w.target()?.check).toEqual({ ok: false, fail: 'refused' });
+    expect(w.target()?.check).toEqual({ ok: false, fail: 'cold' });
     w.hand = { kind: 'sugar' };
+    expect(w.target()?.check).toEqual({ ok: true, verb: 'warm' });
     press(w);
-    expect(p.prepared).toBe(true);
-    w.hand = { kind: 'leech', held: [true] };
+    expect(p.warmed).toBe(true);
+    w.hand = { kind: 'leech', count: 2 };
     expect(w.target()?.check).toEqual({ ok: true, verb: 'apply' });
   });
 
-  it('the bdellometer arrives at half past one and pumps only while held', () => {
-    const w = new Ward('machine');
+  it('stepping on fed leeches can floor him: dazed, the leech squashed, his handful scattered', () => {
+    const w = new Ward('slip');
+    at(w, 60, 160, 'side');
+    for (let i = 0; i < 12; i++) w.floor.push({ id: 500 + i, x: 64 + i * 6, y: 160, angle: 0 });
+    w.hand = { kind: 'leech', count: 2 };
+    let slipped = false;
+    for (let i = 0; i < 40 && !slipped; i++) slipped = w.walk(1, 0, 0.05).some((e) => e.kind === 'slip');
+    expect(slipped).toBe(true);
+    expect(w.doctor.dazed).toBe(CONFIG.slip.dazed);
+    expect(w.hand).toBeNull();
+    expect(w.escapees.length).toBe(2);
+    expect(w.lost).toBe(1);
+    const x = w.doctor.x;
+    w.walk(1, 0, 0.5);
+    expect(w.doctor.x).toBe(x); // can't move while dazed
+    expect(w.target()).toBeNull();
+    for (let i = 0; i < CONFIG.slip.dazed * 10 + 1; i++) w.tick(0.1);
+    expect(w.doctor.dazed).toBe(0);
+  });
+
+  it('day two: orderlies cross the ward and block the doctor', () => {
+    const w = new Ward('orderlies', DAY2);
+    let seen = false;
+    for (let i = 0; i < 100 && !seen; i++) {
+      w.tick(0.1);
+      seen = w.orderlies.some((o) => o.x > 40 && o.x < 380);
+    }
+    expect(seen).toBe(true);
+    const o = w.orderlies.find((x) => x.x > 40 && x.x < 380)!;
+    // stand right in his path: he waits for the doctor
+    at(w, o.x + (o.flip ? -12 : 12), o.y, 'side');
+    const x0 = o.x;
+    let jostled = false;
+    for (let i = 0; i < 10; i++) jostled = w.tick(0.1).some((e) => e.kind === 'jostle') || jostled;
+    expect(jostled).toBe(true);
+    expect(Math.abs(o.x - x0)).toBeLessThan(2);
+    // and the doctor can't walk through him
+    const docX = w.doctor.x;
+    w.walk(o.flip ? 1 : -1, 0, 0.3);
+    expect(Math.abs(w.doctor.x - docX)).toBeLessThan(4);
+  });
+
+  it('the bdellometer arrives at midday on day two and pumps only while held', () => {
+    const w = new Ward('machine', DAY2);
+    w.tick(0.1);
+    expect(w.deviceOnStand).toBe(false);
     w.skipTo('machine');
     expect(w.deviceOnStand).toBe(true);
     const p = untilPatient(w, 0);
@@ -150,67 +237,55 @@ describe('the ward', () => {
     expect(p.blood).toBe(b); // no after-bleed from the cup
   });
 
-  it('escaped leeches crawl to the drain and cost a fine', () => {
-    const w = new Ward('escape');
-    w.skipTo('stubborn');
+  it('day three: no deliveries, the machine from the start', () => {
+    const w = new Ward('shortage', DAY3);
+    w.tick(0.1);
+    expect(w.deviceOnStand).toBe(true);
+    const jar = w.supply.jar;
+    let delivered = false;
+    for (let i = 0; i < 600; i++) delivered = w.tick(0.1).some((e) => e.kind === 'delivery') || delivered;
+    expect(delivered).toBe(false);
+    expect(w.supply.jar).toBeLessThanOrEqual(jar);
+  });
+
+  it('escaped leeches crawl to the drain and cost a fine (not on day one)', () => {
+    const quiet = new Ward('escape', DAY1);
+    for (let i = 0; i < 600; i++) quiet.tick(0.1);
+    expect(quiet.escapees.length + quiet.lost).toBe(0);
+
+    const w = new Ward('escape', DAY2);
     let escaped = false;
     for (let i = 0; i < 1200 && !escaped; i++) escaped = w.tick(0.1).some((e) => e.kind === 'escape');
     expect(escaped).toBe(true);
     const e = w.escapees[0];
-    e.bed = null; // make sure it heads for the drain
     let drained = false;
-    for (let i = 0; i < 1200 && !drained; i++) {
+    for (let i = 0; i < 1500 && !drained; i++) {
       for (const x of w.escapees) x.bed = null;
       drained = w.tick(0.1).some((ev) => ev.kind === 'drain');
     }
     expect(drained).toBe(true);
     expect(w.lost).toBeGreaterThan(0);
-    expect(Math.hypot(DRAIN.x - e.x, DRAIN.y - e.y)).toBeLessThan(4);
-  });
-
-  it('a handful: three leeches from the jar, the stubborn one goes back, a calm one bites first', () => {
-    const w = new Ward('handful');
-    const p = untilPatient(w, 0);
-    byStation(w, 'jar');
-    press(w);
-    press(w);
-    press(w);
-    expect(w.hand).toEqual({ kind: 'leech', held: [false, false, false] });
-    const full = w.supply.jar;
-    expect(w.target()?.check).toEqual({ ok: true, verb: 'putBackAll' }); // a full hand pours back
-    press(w);
-    expect(w.hand).toBeNull();
-    expect(w.supply.jar).toBe(full + 3);
-    w.hand = { kind: 'leech', held: [true, false] };
-    const jar = w.supply.jar;
-    expect(w.target()?.check).toEqual({ ok: true, verb: 'putBackSulky' });
-    press(w);
-    expect(w.hand).toEqual({ kind: 'leech', held: [false] });
-    expect(w.supply.jar).toBe(jar + 1);
-    w.hand = { kind: 'leech', held: [true, false] };
-    byBed(w, 0);
-    press(w);
-    expect(w.hand).toEqual({ kind: 'leech', held: [true] }); // the calm one bit; the sulker is still in hand
-    expect(p.attachedCount).toBe(1);
-    expect(w.target()?.check).toEqual({ ok: false, fail: 'refused' });
+    expect(Math.hypot(w.layout.drain.x - e.x, w.layout.drain.y - e.y)).toBeLessThan(4);
   });
 
   it('every carried thing has somewhere to go (no softlocks)', () => {
-    const w = new Ward('homes');
+    const w = new Ward('homes', DAY2);
     w.skipTo('machine');
     const homes = { leech: 'jar', lint: 'cupboard', sugar: 'stove', bdello: 'stand', used: 'bucket' } as const;
     for (const [kind, station] of Object.entries(homes)) {
-      w.hand = kind === 'used' ? { kind: 'used', count: 2 } : kind === 'leech' ? { kind: 'leech', held: [true] } : ({ kind } as never);
+      w.hand = kind === 'used' ? { kind: 'used', count: 2 } : kind === 'leech' ? { kind: 'leech', count: 3 } : ({ kind } as never);
       if (kind === 'bdello') w.deviceOnStand = false;
       expect(w.check({ kind: 'station', id: station }).ok).toBe(true);
     }
   });
 
-  it('a whole shift runs to the bell with nobody at the wheel', () => {
-    const w = new Ward('idle');
-    let bell = false;
-    for (let i = 0; i < CONFIG.shift.realSeconds * 10 + 10 && !bell; i++) bell = w.tick(0.1).some((e) => e.kind === 'bell');
-    expect(bell).toBe(true);
-    expect(w.shift.verdict()).toBe('REPRIMAND');
+  it('each day runs to the bell with nobody at the wheel', () => {
+    CONFIG.days.forEach((day, i) => {
+      const w = new Ward('idle', i);
+      let bell = false;
+      for (let n = 0; n < day.realSeconds * 10 + 10 && !bell; n++) bell = w.tick(0.1).some((e) => e.kind === 'bell');
+      expect(bell).toBe(true);
+      expect(w.shift.verdict()).toBe('REPRIMAND');
+    });
   });
 });

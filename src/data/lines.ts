@@ -13,43 +13,51 @@ export interface Note {
 export const STAGE_NOTES: Record<StageId, Note> = {
   basics: {
     speaker: 'F.-J.-V. Broussais, Physician-in-Chief',
-    title: '8 o’clock. The Salle Saint-Côme.',
+    title: 'Day 1, 8 o’clock. The Salle Saint-Côme.',
     body: [
       '“Thirty leeches, gentlemen, and lint when they drop. Every fever is an inflamed gut; bleed the gut and the fever goes.”',
     ],
-    hint: 'Take leeches from Madame Ricard’s jar (up to three; E again with a full hand puts them back) and set them on a man. The bar under his bed fills as he bleeds: press lint from the cupboard on him in the GREEN. Fed leeches fall to the floor; sweep them into the salt bucket.',
+    hint: 'Take leeches from Madame Ricard’s jar (up to three; E with a full hand puts them back) and set them on a man. The bar under his bed fills as he bleeds: press lint from the cupboard on him in the GREEN. Fed leeches drop to the floor — slippery underfoot! Sweep them into the salt bucket and they go back in the jar.',
   },
   frail: {
     speaker: 'Sister Marthe',
-    title: '10 o’clock. The pale ones.',
+    title: 'Noon. The pale ones.',
     body: [
       '“They are bringing up the men from the fever ward, Monsieur. Mind the white-faced ones: they drop like sacks.”',
     ],
     hint: 'Anaemic men (ashen faces) have a narrow green and faint soon after it (Prop. 268). One leech and patience — their bites keep bleeding.',
   },
-  stubborn: {
-    speaker: 'Madame Ricard, apothecary',
-    title: 'Noon. A temperamental lot.',
+  promotion: {
+    speaker: 'F.-J.-V. Broussais',
+    title: 'Day 2. The Salle Saint-Louis.',
     body: [
-      '“This lot are sulking. A curled leech won’t bite cold skin — warm him first with a dab of sugar-water. And mind the lid: the hungry ones wander.”',
+      '“You bled the Saint-Côme very prettily, Monsieur. Saint-Louis has seven beds and twice the traffic — try not to fall over the orderlies.”',
     ],
-    hint: 'A curled, frowning leech needs the patient dabbed with sugar-water from the kettle first — or put it back and draw another. Escaped leeches crawl for the drain: catch them.',
+    hint: 'Orderlies cross the aisles and won’t give way: wait, or go round. Chilled men (blanket to the chin, shivering) take no leech until warmed: bring sugar-water from the kettle. Hungry leeches climb out of the jar and make for the drain — catch them.',
   },
   machine: {
     speaker: 'A crate from the instrument-maker',
-    title: 'Half past one. A modern miracle.',
+    title: 'Half past twelve. A modern miracle.',
     body: [
       '“With the compliments of Dr. Sarlandière: the bdellometer. A glass cup, a scarifier and a pump — the leech made obsolete.”',
     ],
     hint: 'Carry the bdellometer to a bed and HOLD E to pump. Let go to stop at once; it leaves no after-bleed — but it needs both your hands.',
   },
   shortage: {
-    speaker: 'Madame Ricard',
-    title: '3 o’clock. The great shortage.',
+    speaker: 'Madame Ricard, apothecary',
+    title: 'Day 3. The great shortage.',
     body: [
-      '“The Hungarian shipment is late. There is not a leech left in Paris — the cholera wards bought them all.”',
+      '“Not one leech in Paris, Monsieur — the cholera wards bought them all, and the Hungarian shipment is lost. What is in the jar is all you will have today.”',
     ],
-    hint: 'Deliveries stop for a while (see the countdown). Salted leeches go back in the jar. Drummer boys bleed on and on (Prop. 266); nervous conscripts faint from fright unless you stand by them.',
+    hint: 'No deliveries today. Every fed leech you salt goes back in the jar; every one you lose is gone. The bdellometer is on its stand from the start.',
+  },
+  drummers: {
+    speaker: 'Sister Marthe',
+    title: 'Noon. Boys and conscripts.',
+    body: [
+      '“The drummer boys are in, and the new conscripts. The little ones bleed like fountains, and the conscripts faint if you so much as look at a leech.”',
+    ],
+    hint: 'Drummer boys’ bites bleed on and on (Prop. 266): one leech, and lint soon. Nervous conscripts panic when left alone: stand by them.',
   },
 };
 
@@ -58,14 +66,13 @@ export const CONTROLS = 'WASD / arrows: walk  ·  E / Space: take, give, apply (
 export const VERB = {
   takeLeech: 'Take a leech',
   putBack: 'Put it back',
-  putBackSulky: 'Put the stubborn one back',
   putBackAll: 'Put them all back',
   takeLint: 'Take lint',
   takeSugar: 'Take sugar-water',
   takeDevice: 'Take the bdellometer',
   apply: 'Apply leech',
   bandage: 'Press lint',
-  prepare: 'Dab sugar-water',
+  warm: 'Warm him with sugar-water',
   pump: 'Hold to pump',
   lift: 'Lift onto stretcher',
   deliver: 'Carry to recovery',
@@ -78,10 +85,10 @@ export type Verb = keyof typeof VERB;
 export const FAIL = {
   handsFull: 'Hands full',
   jarEmpty: 'The jar is empty',
-  jarShortage: 'No leeches — the shipment is late',
+  jarShortage: 'Empty — salt the fed ones to refill it',
   full: 'Three is plenty',
-  refused: 'Too cold for him — sugar-water first',
-  prepared: 'Already warmed',
+  cold: 'He’s chilled — no leech will take. Sugar-water first',
+  notCold: 'He’s warm enough',
   saltHungry: 'Salt is for the fed ones',
   usedOnPatient: 'To the salt bucket with those',
   notDone: 'Not that — he needs carrying',
@@ -108,9 +115,8 @@ export const SAY = {
   drain: 'Down the drain',
   delivery: (n: number) => `+${n} leeches`,
   recycled: (n: number) => `${n} back in the jar`,
-  shortageWarning: 'No deliveries soon — the shipment is late',
-  shortageStart: 'No leeches until the shipment',
-  shortageEnd: 'Madame Ricard’s boy is here with the jar',
+  slip: 'Slipped on a leech!',
+  jostle: 'Pardon, Monsieur!',
   bell: 'The six o’clock bell',
 };
 
@@ -119,6 +125,8 @@ export const VERDICT_REMARK = {
   NOTED: '“Noted. Adequate bleeding, inadequate zeal. Thirty leeches, Monsieur — thirty.”',
   REPRIMAND: '“Men fainting in the corridors, leeches in the drains. See me in the morning.”',
 };
+
+export const FINAL_REMARK = '“Three days in my wards and the garrison is pale, quiet and grateful. Physiological medicine, Monsieur — it never fails.”';
 
 export const OUTCOME_LABEL: Record<string, string> = {
   green: 'bled just right',

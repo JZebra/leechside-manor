@@ -68,6 +68,10 @@ export const SOUNDS = {
   slither: { noise: { dur: 0.4, attack: 0.1, band: [700, 1600, 900], q: 2.2, vol: 0.4, am: { rate: 7, depth: 0.7 } }, vary: 0.1 },
   // a stretcher's poles knocking the bedframe
   stretcher: { def: { wave_type: 3, p_env_sustain: 0.03, p_env_decay: 0.24, p_env_punch: 0.6, p_base_freq: 0.18, p_lpf_freq: 0.3, sound_vol: 0.34 }, vary: 0.1 },
+  // feet out from under him: a skid on wet stone
+  slip: { noise: { dur: 0.28, attack: 0.005, band: [2600, 900, 300], q: 0.9, vol: 0.9 }, vary: 0.1 },
+  // an orderly's grunt as he's held up
+  grunt: { noise: { dur: 0.2, attack: 0.01, band: [300, 520, 260], q: 2.5, vol: 0.5, am: { rate: 40, depth: 0.5 } }, vary: 0.15 },
   // can't: a dull wooden knock
   nope: { def: { wave_type: 1, p_env_sustain: 0.03, p_env_decay: 0.12, p_base_freq: 0.18, p_lpf_freq: 0.3, sound_vol: 0.2 }, vary: 0.05 },
 } satisfies Record<string, SoundSpec>;

@@ -1,14 +1,14 @@
-// The shift: the clock from eight to the six o'clock bell, the stages that
+// One day's shift: the clock from eight to the six o'clock bell, the stages that
 // introduce each mechanic, patient arrivals, and the day's takings.
 
-import { CONFIG, type PatientType, type StageId } from '../config';
+import { CONFIG, type DaySpec, type PatientType, type StageId } from '../config';
 import { makeRng, type Rng } from './rng';
 import { FIRST_NAMES, SURNAMES, REGIMENTS, RANKS } from './names';
 import type { Profile } from './patient';
 
 export type ShiftEvent =
   | { kind: 'stage'; id: StageId }
-  | { kind: 'arrival'; type: PatientType; profile: Profile }
+  | { kind: 'arrival'; type: PatientType; profile: Profile; cold: boolean }
   | { kind: 'bell' };
 
 export interface Entry {
@@ -23,6 +23,8 @@ const HAIRS = ['hairBlack', 'hairDark', 'hairDark', 'hairBrown', 'hairBrown', 'h
 
 export class Shift {
   readonly rng: Rng;
+  readonly day: number; // 0-based index into CONFIG.days
+  readonly spec: DaySpec;
   elapsed = 0; // real seconds
   stageIndex = 0;
   money = 0;
@@ -31,27 +33,36 @@ export class Shift {
   private arrivalIn = 0;
   private opening: number = CONFIG.arrivals.opening;
   private usedNames = new Set<string>();
+  private started = false;
 
-  constructor(seed: string) {
-    this.rng = makeRng(seed, 'shift');
+  constructor(seed: string, day = 0) {
+    this.day = day;
+    this.spec = CONFIG.days[day];
+    this.rng = makeRng(seed, 'shift', day);
   }
 
   get minutes(): number {
-    const { startMinutes, endMinutes, realSeconds } = CONFIG.shift;
-    return Math.min(endMinutes, startMinutes + (this.elapsed / realSeconds) * (endMinutes - startMinutes));
+    const { startMinutes, endMinutes } = CONFIG.shift;
+    return Math.min(endMinutes, startMinutes + (this.elapsed / this.spec.realSeconds) * (endMinutes - startMinutes));
   }
 
   get stage(): StageId {
-    return CONFIG.stages[this.stageIndex].id;
+    return this.spec.stages[this.stageIndex].id;
   }
 
-  stageReached(id: StageId): boolean {
-    return CONFIG.stages.findIndex((s) => s.id === id) <= this.stageIndex;
+  get stageSpec() {
+    return CONFIG.stages[this.stage];
   }
 
   clockText(): string {
     const m = Math.floor(this.minutes);
     return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+  }
+
+  // Seconds of play from 8:00 to a clock time on this day.
+  secondsAt(minutes: number): number {
+    const { startMinutes, endMinutes } = CONFIG.shift;
+    return ((minutes - startMinutes) / (endMinutes - startMinutes)) * this.spec.realSeconds;
   }
 
   profile(type: PatientType): Profile {
@@ -75,17 +86,21 @@ export class Shift {
   }
 
   private arrival(): ShiftEvent {
-    const type = this.rng.weighted(CONFIG.arrivals.mix[this.stage]) as PatientType;
-    return { kind: 'arrival', type, profile: this.profile(type) };
+    const type = this.rng.weighted(this.stageSpec.mix) as PatientType;
+    const cold = this.rng.chance(this.spec.coldChance);
+    return { kind: 'arrival', type, profile: this.profile(type), cold };
   }
 
   tick(dt: number): ShiftEvent[] {
     if (this.over) return [];
     const out: ShiftEvent[] = [];
-    if (this.elapsed === 0) out.push({ kind: 'stage', id: this.stage });
+    if (!this.started) {
+      this.started = true;
+      out.push({ kind: 'stage', id: this.stage });
+    }
     this.elapsed += dt;
 
-    const next = CONFIG.stages[this.stageIndex + 1];
+    const next = this.spec.stages[this.stageIndex + 1];
     if (next && this.minutes >= next.at) {
       this.stageIndex++;
       out.push({ kind: 'stage', id: next.id });
@@ -94,11 +109,11 @@ export class Shift {
     if (this.opening > 0) {
       this.opening--;
       out.push(this.arrival());
-      if (this.opening === 0) this.arrivalIn = CONFIG.arrivals.interval[this.stage];
+      if (this.opening === 0) this.arrivalIn = this.stageSpec.interval;
     } else {
       this.arrivalIn -= dt;
       if (this.arrivalIn <= 0) {
-        this.arrivalIn = CONFIG.arrivals.interval[this.stage];
+        this.arrivalIn = this.stageSpec.interval;
         out.push(this.arrival());
       }
     }
@@ -108,6 +123,16 @@ export class Shift {
       out.push({ kind: 'bell' });
     }
     return out;
+  }
+
+  // Jump the clock to a stage (testing): earlier notes are skipped.
+  skipTo(id: StageId): boolean {
+    const i = this.spec.stages.findIndex((s) => s.id === id);
+    if (i <= 0) return false;
+    this.elapsed = this.secondsAt(this.spec.stages[i].at);
+    this.stageIndex = i;
+    this.started = true;
+    return true;
   }
 
   record(entry: Entry) {
@@ -120,7 +145,7 @@ export class Shift {
   }
 
   verdict(): 'APPROVED' | 'NOTED' | 'REPRIMAND' {
-    const v = CONFIG.score.verdict;
+    const v = this.spec.verdict;
     return this.money >= v.approved ? 'APPROVED' : this.money >= v.noted ? 'NOTED' : 'REPRIMAND';
   }
 }

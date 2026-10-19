@@ -23,6 +23,21 @@ dead, Leech Clinic is a fast one about keeping six beds bleeding at the right ra
 
 ---
 
+## Playtest revisions (after the first build)
+
+- **Chilled patients replace stubborn leeches.** A cold man (blanket to the chin, shivering, blue
+  lips) takes no leech until warmed with sugar-water; leeches in hand are a plain count (up to three;
+  E at the jar with a full hand pours them back).
+- **Three short days** instead of one long shift: Day 1 Saint-Côme (anaemic men at noon); Day 2
+  Saint-Louis, a busier seven-bed ward whose orderlies cross the aisles and block the doctor, with
+  chilled men and runaway leeches, and the bdellometer at midday; Day 3 the shortage — no deliveries
+  all day, so fed leeches must be salted and reused and the machine matters.
+- **Slips:** fed leeches on the floor can floor the doctor — dazed 3 s, the leech squashed, whatever
+  leeches he held scattered. Fed leeches drop beside the bed, in the walkways.
+- **Creepier leeches:** ringed, glistening bodies, red eyes, toothed mouths; they throb as they feed and
+  crawl like inchworms.
+- **Title plate:** *Mort de Galerius* (eaten by worms), BnF Français 127 f. 258r.
+
 ## 1. Project context
 
 Single-player, Overcooked-inspired: one doctor, one ward, too many patients, a jar of leeches.

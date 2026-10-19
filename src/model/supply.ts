@@ -1,22 +1,18 @@
-// Madame Ricard's jar: the hungry-leech supply, deliveries, and shortages.
+// Madame Ricard's jar: the hungry-leech supply and her boy's deliveries.
+// On the day of the shortage nothing comes: salted leeches are all you get back.
 
 import { CONFIG } from '../config';
 
-export type ShortagePhase = 'none' | 'warning' | 'active' | 'over';
-export type SupplyEvent =
-  | { kind: 'delivery'; count: number }
-  | { kind: 'shortageWarning' }
-  | { kind: 'shortageStart' }
-  | { kind: 'shortageEnd' };
+export type SupplyEvent = { kind: 'delivery'; count: number };
 
 export class Supply {
-  jar: number = CONFIG.supply.start;
-  phase: ShortagePhase = 'none';
-  phaseLeft = 0; // seconds left in the current shortage phase
+  jar: number;
+  readonly deliveries: boolean;
   nextDelivery: number = CONFIG.supply.deliveryEvery;
 
-  get delivering(): boolean {
-    return this.phase !== 'active';
+  constructor(start: number, deliveries: boolean) {
+    this.jar = start;
+    this.deliveries = deliveries;
   }
 
   take(): boolean {
@@ -29,40 +25,14 @@ export class Supply {
     this.jar += n;
   }
 
-  beginShortage(): SupplyEvent[] {
-    if (this.phase !== 'none') return [];
-    this.phase = 'warning';
-    this.phaseLeft = CONFIG.supply.shortage.warnSeconds;
-    return [{ kind: 'shortageWarning' }];
-  }
-
   tick(dt: number): SupplyEvent[] {
-    const out: SupplyEvent[] = [];
-    if (this.phase === 'warning' || this.phase === 'active') {
-      this.phaseLeft -= dt;
-      if (this.phaseLeft <= 0) {
-        if (this.phase === 'warning') {
-          this.phase = 'active';
-          this.phaseLeft = CONFIG.supply.shortage.seconds;
-          out.push({ kind: 'shortageStart' });
-        } else {
-          this.phase = 'over';
-          this.nextDelivery = 0; // the boy arrives with the jar at once
-          out.push({ kind: 'shortageEnd' });
-        }
-      }
-    }
-    if (this.delivering) {
-      this.nextDelivery -= dt;
-      if (this.nextDelivery <= 0) {
-        this.nextDelivery += CONFIG.supply.deliveryEvery;
-        const count = Math.max(0, Math.min(CONFIG.supply.deliverySize, CONFIG.supply.cap - this.jar));
-        if (count > 0) {
-          this.jar += count;
-          out.push({ kind: 'delivery', count });
-        }
-      }
-    }
-    return out;
+    if (!this.deliveries) return [];
+    this.nextDelivery -= dt;
+    if (this.nextDelivery > 0) return [];
+    this.nextDelivery += CONFIG.supply.deliveryEvery;
+    const count = Math.max(0, Math.min(CONFIG.supply.deliverySize, CONFIG.supply.cap - this.jar));
+    if (!count) return [];
+    this.jar += count;
+    return [{ kind: 'delivery', count }];
   }
 }

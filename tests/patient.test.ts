@@ -19,7 +19,7 @@ describe('Patient', () => {
 
   it('a leech feeds, drops off, and its bite bleeds on', () => {
     const p = new Patient('soldier', profile);
-    expect(p.attach({ stubborn: false })).toBe('ok');
+    expect(p.attach()).toBe('ok');
     const ev = run(p, CONFIG.leech.feedSeconds + 0.2);
     expect(ev.filter((e) => e.kind === 'leechDone')).toHaveLength(1);
     expect(p.wounds).toBe(1);
@@ -28,24 +28,26 @@ describe('Patient', () => {
     expect(p.blood).toBeGreaterThan(before);
   });
 
-  it('a stubborn leech refuses until the skin is sweetened', () => {
-    const p = new Patient('soldier', profile);
-    expect(p.attach({ stubborn: true })).toBe('refused');
-    expect(p.prepare()).toBe(true);
-    expect(p.attach({ stubborn: true })).toBe('ok');
+  it('a cold man takes no leech until he is warmed', () => {
+    const p = new Patient('soldier', profile, true);
+    expect(p.attach()).toBe('refused');
+    expect(p.warm()).toBe(true);
+    expect(p.attach()).toBe('ok');
+    const warmBlooded = new Patient('soldier', profile);
+    expect(warmBlooded.attach()).toBe('ok');
   });
 
   it('holds at most three leeches', () => {
     const p = new Patient('soldier', profile);
-    for (let i = 0; i < CONFIG.patient.maxLeeches; i++) expect(p.attach({ stubborn: false })).toBe('ok');
-    expect(p.attach({ stubborn: false })).toBe('full');
+    for (let i = 0; i < CONFIG.patient.maxLeeches; i++) expect(p.attach()).toBe('ok');
+    expect(p.attach()).toBe('full');
   });
 
   it('lint in the green earns the full fee and drops attached leeches', () => {
     const p = new Patient('soldier', profile);
-    p.attach({ stubborn: false });
-    p.attach({ stubborn: false });
-    p.attach({ stubborn: false });
+    p.attach();
+    p.attach();
+    p.attach();
     run(p, 5); // 3 leeches × ~0.022/s × 5s ≈ 0.33: still red
     expect(p.zone()).toBe('red');
     while (p.zone() === 'red') p.pump(0.1);
@@ -60,15 +62,15 @@ describe('Patient', () => {
 
   it('lint too early pays less', () => {
     const p = new Patient('soldier', profile);
-    p.attach({ stubborn: false });
+    p.attach();
     expect(p.bandage()!.outcome).toBe('early');
   });
 
   it('three leeches and the after-bleed will faint an anaemic man', () => {
     const p = new Patient('anaemic', profile);
-    p.attach({ stubborn: false });
-    p.attach({ stubborn: false });
-    p.attach({ stubborn: false });
+    p.attach();
+    p.attach();
+    p.attach();
     const ev = run(p, 30);
     const faint = ev.find((e) => e.kind === 'faint');
     expect(faint).toBeTruthy();
@@ -88,7 +90,7 @@ describe('Patient', () => {
 
   it('one leech on an anaemic man lands in the green with time to spare', () => {
     const p = new Patient('anaemic', profile);
-    p.attach({ stubborn: false });
+    p.attach();
     let greenFor = 0;
     for (let t = 0; t < 60 && p.active; t += 0.1) {
       p.tick(0.1);
@@ -99,12 +101,12 @@ describe('Patient', () => {
 
   it('a nervous conscript left alone faints from fright; company calms him', () => {
     const alone = new Patient('nervous', profile);
-    alone.attach({ stubborn: false }); // one leech: he'd survive the blood loss, not the fear
+    alone.attach(); // one leech: he'd survive the blood loss, not the fear
     const { rise, perLeech } = CONFIG.patient.panic;
     const ev = run(alone, (1 - perLeech) / rise + 2);
     expect(ev.some((e) => e.kind === 'faint' && e.cause === 'fright')).toBe(true);
     const company = new Patient('nervous', profile);
-    company.attach({ stubborn: false });
+    company.attach();
     run(company, 10, 0.1, true);
     expect(company.panic).toBe(0);
   });

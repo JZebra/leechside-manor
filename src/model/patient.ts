@@ -7,10 +7,6 @@ export type Zone = 'red' | 'green' | 'blue';
 export type PatientState = 'waiting' | 'treating' | 'fainted' | 'done' | 'left';
 export type FaintCause = 'blood' | 'fright';
 
-export interface Leech {
-  stubborn: boolean;
-}
-
 export interface Attached {
   fed: number; // 0 → 1
   wild: boolean; // climbed on by itself
@@ -40,16 +36,18 @@ export class Patient {
   blood = 0; // drawn so far, 0–1
   wounds = 0; // open bites still bleeding
   leeches: (Attached | null)[];
-  prepared = false; // sugar-water dabbed on
+  readonly cold: boolean; // chilled: no leech will take until he's warmed
+  warmed = false; // sugar-water dabbed on
   patience: number;
   panic = 0;
   faintCause: FaintCause | null = null;
   outcome: 'green' | 'early' | 'late' | 'faint' | 'walkedOut' | null = null;
   private lastZone: Zone = 'red';
 
-  constructor(type: PatientType, profile: Profile) {
+  constructor(type: PatientType, profile: Profile, cold = false) {
     this.type = type;
     this.profile = profile;
+    this.cold = cold;
     this.patience = CONFIG.patient.patience;
     this.leeches = new Array(CONFIG.patient.maxLeeches).fill(null);
   }
@@ -86,9 +84,14 @@ export class Patient {
     if (this.state === 'waiting') this.state = 'treating';
   }
 
-  attach(leech: Leech, wild = false): AttachResult {
+  // Leeches won't take on cold skin (19th-c. manuals: warm it, dab it with milk or sugar-water).
+  get chilled(): boolean {
+    return this.cold && !this.warmed;
+  }
+
+  attach(wild = false): AttachResult {
     if (!this.active) return 'busy';
-    if (leech.stubborn && !this.prepared) return 'refused';
+    if (this.chilled) return 'refused';
     const slot = this.leeches.indexOf(null);
     if (slot < 0) return 'full';
     this.leeches[slot] = { fed: 0, wild };
@@ -97,9 +100,9 @@ export class Patient {
     return 'ok';
   }
 
-  prepare(): boolean {
-    if (!this.active || this.prepared) return false;
-    this.prepared = true;
+  warm(): boolean {
+    if (!this.active || this.warmed) return false;
+    this.warmed = true;
     this.start();
     return true;
   }

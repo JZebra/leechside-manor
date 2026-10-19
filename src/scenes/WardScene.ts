@@ -7,9 +7,9 @@ import { PIXEL, hex, type PaletteKey } from '../art/palette';
 import { ensurePatientTexture, LEECH_SLOTS, SATED, escapeKey, escapeDir, handKey, type PatientLook } from '../art/sprites';
 import { Ward, type WardEvent, type Target, type Hand } from '../model/ward';
 import type { Patient } from '../model/patient';
-import { BEDS, BED, STATIONS, DRAIN, WORLD, WINDOWS, bedRect, type StationId, type Rect } from '../model/layout';
+import { BED, WORLD, type Layout, type StationId, type Rect } from '../model/layout';
 import { STAGE_NOTES, VERB, FAIL, SAY, CONTROLS, type Note } from '../data/lines';
-import { sfx, isMuted, setMuted } from '../audio/audio';
+import { sfx, isMuted, setMuted, audioDebug } from '../audio/audio';
 import { FLAGS } from '../flags';
 import { fitCamera, text, sprite, place, panel, STAGE } from '../ui/view';
 
@@ -18,11 +18,12 @@ const DEPTH = { floor: 0, floorItem: 2, world: 10, overlay: 9000, prompt: 9500, 
 type Tone = 'good' | 'bad' | 'info' | 'cold';
 const TONE: Record<Tone, PaletteKey> = { good: 'meterGreen1', bad: 'red3', info: 'paper0', cold: 'meterBlue1' };
 const STAGE_TITLE: Record<StageId, string> = {
-  basics: 'The basics',
-  frail: 'Difficult patients',
-  stubborn: 'Uncooperative leeches',
-  machine: 'Modern miracles',
-  shortage: 'The great shortage',
+  basics: 'the basics',
+  frail: 'the pale ones',
+  promotion: 'seven beds, and orderlies',
+  machine: 'a modern miracle',
+  shortage: 'no deliveries',
+  drummers: 'boys and conscripts',
 };
 
 interface BedView {
@@ -52,6 +53,7 @@ export function lookOf(p: Patient): PatientLook {
     pallor: p.pallorRung(),
     eyes: p.state === 'fainted' ? 'closed' : p.type === 'nervous' ? 'wide' : 'open',
     sweat: p.active && ((p.type === 'nervous' && p.panic > 0.4) || p.zone() === 'blue'),
+    cold: p.active && p.chilled,
   };
 }
 
@@ -84,15 +86,26 @@ export class WardScene extends Phaser.Scene {
   private pumpSoundIn = 0;
   private ending = false;
   private recentSays: { x: number; y: number; t: number }[] = [];
+  private dayIndex = 0;
+  private orderlySprites = new Map<number, Phaser.GameObjects.Image>();
+  private stars!: Phaser.GameObjects.Image;
 
   constructor() {
     super('ward');
   }
 
+  init(data: { day?: number }) {
+    this.dayIndex = Math.max(0, Math.min(CONFIG.days.length - 1, data?.day ?? FLAGS.day ?? 0));
+  }
+
+  private get L(): Layout {
+    return this.ward.layout;
+  }
+
   create() {
     fitCamera(this);
     const seed = FLAGS.seed ?? String(Date.now());
-    this.ward = new Ward(seed);
+    this.ward = new Ward(seed, this.dayIndex);
     (window as unknown as { ward: Ward }).ward = this.ward;
     this.t = 0;
     this.notes = [];
@@ -103,6 +116,7 @@ export class WardScene extends Phaser.Scene {
     this.queueViews = [];
     this.floorSprites.clear();
     this.escapeeSprites.clear();
+    this.orderlySprites.clear();
     this.trail = [];
     this.recentSays = [];
 
@@ -118,18 +132,28 @@ export class WardScene extends Phaser.Scene {
   private buildRoom() {
     this.add.tileSprite(0, WORLD.wall * P, WORLD.w, WORLD.h - WORLD.wall, 'floor').setOrigin(0).setScale(P).setDepth(DEPTH.floor);
     this.add.tileSprite(0, 0, WORLD.w, WORLD.wall, 'wall').setOrigin(0).setScale(P).setDepth(DEPTH.floor);
-    for (const x of WINDOWS) sprite(this, 'window', x, 3).setDepth(DEPTH.floor + 1);
-    sprite(this, 'drain', DRAIN.x - 6, DRAIN.y - 4).setDepth(DEPTH.floor + 1);
+    const L = this.L;
+    for (const x of L.windows) sprite(this, 'window', x, 3).setDepth(DEPTH.floor + 1);
+    sprite(this, 'drain', L.drain.x - 6, L.drain.y - 4).setDepth(DEPTH.floor + 1);
+    // openings in the side walls where the orderlies come and go
+    const gd = this.add.graphics().setDepth(DEPTH.floor + 1);
+    for (const route of L.routes) {
+      for (const end of [route[0], route[route.length - 1]]) {
+        const x = end.x < WORLD.w / 2 ? 0 : WORLD.w - 4;
+        gd.fillStyle(hex('ink')).fillRect(x * P, (end.y - 22) * P, 4 * P, 26 * P);
+        gd.fillStyle(hex('wood1')).fillRect((x + (x ? 0 : 3)) * P, (end.y - 22) * P, P, 26 * P);
+      }
+    }
     this.gTrail = this.add.graphics().setDepth(DEPTH.floorItem - 1);
 
-    for (const id of Object.keys(STATIONS) as StationId[]) {
-      const s = STATIONS[id];
+    for (const id of Object.keys(L.stations) as StationId[]) {
+      const s = L.stations[id];
       this.stations[id] = sprite(this, s.tex, s.box.x, s.box.y).setDepth(id === 'door' ? DEPTH.floor + 1 : DEPTH.world + s.box.y + s.box.h);
     }
-    text(this, (STATIONS.door.box.x + 26) * P, 6 * P, 'To the\nconvalescents', { size: 15, italic: true, color: 'paper0', stroke: 'ink', strokeWidth: 4 })
+    text(this, (L.stations.door.box.x + 26) * P, 6 * P, 'To the\nconvalescents', { size: 15, italic: true, color: 'paper0', stroke: 'ink', strokeWidth: 4 })
       .setDepth(DEPTH.floor + 2);
 
-    BEDS.forEach((b, i) => {
+    L.beds.forEach((b, i) => {
       const depth = DEPTH.world + b.y + BED.h;
       sprite(this, 'bed', b.x, b.y).setDepth(depth - 0.5);
       const view: BedView = {
@@ -148,6 +172,7 @@ export class WardScene extends Phaser.Scene {
     this.gMeters = this.add.graphics().setDepth(DEPTH.overlay);
     this.gHighlight = this.add.graphics().setDepth(DEPTH.prompt);
     this.doctor = sprite(this, 'doc:down:0');
+    this.stars = sprite(this, 'daze:0').setDepth(DEPTH.prompt).setVisible(false);
     this.carry = sprite(this, 'item:lint').setVisible(false);
     this.carryCount = text(this, 0, 0, '', { size: 16, color: 'paper0', stroke: 'ink', strokeWidth: 4, bold: true }).setDepth(DEPTH.prompt);
     this.device = sprite(this, 'cup:0:0').setVisible(false);
@@ -157,7 +182,8 @@ export class WardScene extends Phaser.Scene {
   private buildHud() {
     const g = this.add.graphics().setDepth(DEPTH.hud);
     panel(g, 996, 9, 270, 54, 'paper1');
-    const jar = STATIONS.jar.box;
+    const jar = this.L.stations.jar.box;
+    const bucket = this.L.stations.bucket.box;
     this.hud = {
       clock: text(this, 1012, 36, '8:00', { font: 'display', size: 34 }).setOrigin(0, 0.5).setDepth(DEPTH.hud),
       money: text(this, 1130, 36, '0 fr', { font: 'display', size: 28, color: 'red1' }).setOrigin(0.5).setDepth(DEPTH.hud),
@@ -165,7 +191,7 @@ export class WardScene extends Phaser.Scene {
       stage: text(this, 990, 72, '', { size: 15, italic: true, color: 'paper0', stroke: 'ink', strokeWidth: 4, align: 'right' }).setOrigin(1, 0).setDepth(DEPTH.hud),
       banner: text(this, 600, 36, '', { size: 19, color: 'paper0', stroke: 'ink', strokeWidth: 5, align: 'center' }).setOrigin(0.5).setDepth(DEPTH.hud),
       jarLabel: text(this, (jar.x + jar.w / 2) * P, (jar.y + 17.5) * P, '8', { font: 'display', size: 24 }).setOrigin(0.5).setDepth(DEPTH.world + 200),
-      salt: text(this, (STATIONS.bucket.box.x + 10) * P, (STATIONS.bucket.box.y + 20) * P, '', { size: 14, italic: true, color: 'linen1', stroke: 'ink', strokeWidth: 4, align: 'center' }).setOrigin(0.5, 0).setDepth(DEPTH.overlay),
+      salt: text(this, (bucket.x + 10) * P, (bucket.y + 20) * P, '', { size: 14, italic: true, color: 'linen1', stroke: 'ink', strokeWidth: 4, align: 'center' }).setOrigin(0.5, 0).setDepth(DEPTH.overlay),
       queue: text(this, 6 * P, 30 * P, 'At the door', { size: 15, italic: true, color: 'paper0', stroke: 'ink', strokeWidth: 4 }).setDepth(DEPTH.overlay),
       mute: text(this, 1262, 72, '', { size: 14, italic: true, color: 'paper2', stroke: 'ink', strokeWidth: 3 }).setOrigin(1, 0).setDepth(DEPTH.hud),
     };
@@ -197,7 +223,7 @@ export class WardScene extends Phaser.Scene {
       sfx('click');
     });
     kb.on('keydown-R', () => {
-      if (this.paused) this.scene.restart();
+      if (this.paused) this.scene.restart({ day: this.dayIndex });
     });
     kb.on('keydown-T', () => {
       if (this.paused) this.scene.start('title');
@@ -279,19 +305,18 @@ export class WardScene extends Phaser.Scene {
           if (FLAGS.notes) this.notes.push(STAGE_NOTES[e.id]);
           break;
         case 'deviceArrives':
-          this.sayAt(STATIONS.stand.box, 'The bdellometer has come', 'info');
+          this.sayAt(this.L.stations.stand.box, 'The bdellometer has come', 'info');
           break;
         case 'arrive':
           sfx('door', { minGap: 0.3 });
           break;
         case 'gaveUp':
           sfx('door');
-          if (e.bed != null) this.sayAt(bedRect(e.bed), `${SAY.walkedOut} ${e.fee} fr`, 'bad');
+          if (e.bed != null) this.sayAt(this.ward.bedRect(e.bed), `${SAY.walkedOut} ${e.fee} fr`, 'bad');
           else this.say(`${SAY.gaveUpQueue} ${e.fee} fr`, 20, 40, 'bad');
           break;
         case 'take':
           sfx('pick');
-          if (e.stubborn) this.say('A stubborn one…', ward.doctor.x, ward.doctor.y - 30, 'cold');
           break;
         case 'putBack':
           sfx(e.what === 'leech' ? 'clink' : 'pick');
@@ -300,94 +325,89 @@ export class WardScene extends Phaser.Scene {
           sfx('squelch');
           break;
         case 'fail':
-          sfx(e.fail === 'refused' ? 'refuse' : 'nope');
+          sfx(e.fail === 'cold' ? 'refuse' : 'nope');
           if (e.target) this.sayAt(this.targetRect(e.target), FAIL[e.fail], 'info');
           break;
-        case 'prepare':
+        case 'warm':
           sfx('pour');
-          this.sayAt(bedRect(e.bed), 'Warmed with sugar-water', 'good');
+          this.sayAt(this.ward.bedRect(e.bed), 'Warmed — the leeches will take now', 'good');
           break;
         case 'leechDone':
           sfx('plip');
           break;
         case 'ready':
           sfx('ding');
-          this.sayAt(bedRect(e.bed), SAY.ready, 'good');
+          this.sayAt(this.ward.bedRect(e.bed), SAY.ready, 'good');
           break;
         case 'warning':
           sfx('tick');
-          this.sayAt(bedRect(e.bed), SAY.warning, 'cold');
+          this.sayAt(this.ward.bedRect(e.bed), SAY.warning, 'cold');
           break;
         case 'faint':
           sfx('thud');
           sfx('gasp');
-          this.sayAt(bedRect(e.bed), `${e.cause === 'fright' ? SAY.faintFright : SAY.faintBlood}  ${e.fee} fr`, 'bad');
+          this.sayAt(this.ward.bedRect(e.bed), `${e.cause === 'fright' ? SAY.faintFright : SAY.faintBlood}  ${e.fee} fr`, 'bad');
           break;
         case 'bandage':
           sfx('pat');
           sfx('coin');
-          this.sayAt(bedRect(e.bed), `${SAY[e.outcome]}  +${e.fee} fr`, e.outcome === 'green' ? 'good' : 'info');
+          this.sayAt(this.ward.bedRect(e.bed), `${SAY[e.outcome]}  +${e.fee} fr`, e.outcome === 'green' ? 'good' : 'info');
           break;
         case 'lift':
           sfx('stretcher');
           break;
         case 'deliver':
           sfx('door');
-          this.sayAt(STATIONS.door.box, 'To the convalescents', 'info');
+          this.sayAt(this.L.stations.door.box, 'To the convalescents', 'info');
           break;
         case 'scoop':
           sfx('pick');
           break;
         case 'salt':
           sfx('salt');
-          this.sayAt(STATIONS.bucket.box, `Salted ${e.count}`, 'info');
+          this.sayAt(this.L.stations.bucket.box, `Salted ${e.count}`, 'info');
           break;
         case 'recycled':
           sfx('clink');
-          this.sayAt(STATIONS.jar.box, SAY.recycled(e.count), 'good');
+          this.sayAt(this.L.stations.jar.box, SAY.recycled(e.count), 'good');
           break;
         case 'escape':
           sfx('slither');
-          this.sayAt(STATIONS.jar.box, SAY.escape, 'bad');
+          this.sayAt(this.L.stations.jar.box, SAY.escape, 'bad');
           break;
         case 'latch':
-          this.sayAt(bedRect(e.bed), SAY.latch, 'bad');
+          this.sayAt(this.ward.bedRect(e.bed), SAY.latch, 'bad');
           break;
         case 'drain':
           sfx('plip');
-          this.say(`${SAY.drain}  ${e.fee} fr`, DRAIN.x, DRAIN.y - 10, 'bad');
+          this.say(`${SAY.drain}  ${e.fee} fr`, this.L.drain.x, this.L.drain.y - 10, 'bad');
           break;
         case 'catch':
           sfx('pick');
           break;
         case 'delivery':
           sfx('delivery');
-          this.sayAt(STATIONS.jar.box, SAY.delivery(e.count), 'good');
+          this.sayAt(this.L.stations.jar.box, SAY.delivery(e.count), 'good');
           break;
-        case 'shortageWarning':
-          sfx('page');
-          this.sayAt(STATIONS.jar.box, SAY.shortageWarning, 'bad');
+        case 'slip':
+          sfx('slip');
+          sfx('thud');
+          this.say(`${SAY.slip}  ${e.fee} fr${e.spilled ? ` — ${e.spilled} spilled` : ''}`, ward.doctor.x, ward.doctor.y - 26, 'bad');
           break;
-        case 'shortageStart':
-          sfx('nope');
-          this.sayAt(STATIONS.jar.box, SAY.shortageStart, 'bad');
-          break;
-        case 'shortageEnd':
-          sfx('delivery');
-          this.sayAt(STATIONS.jar.box, SAY.shortageEnd, 'good');
+        case 'jostle':
+          sfx('grunt', { minGap: 0.5 });
+          this.say(SAY.jostle, e.x, e.y, 'info');
           break;
         case 'bell':
           this.endShift();
-          break;
-        case 'queued':
           break;
       }
     }
   }
 
   private targetRect(t: Target): Rect {
-    if (t.kind === 'bed') return bedRect(t.bed);
-    if (t.kind === 'station') return STATIONS[t.id].box;
+    if (t.kind === 'bed') return this.ward.bedRect(t.bed);
+    if (t.kind === 'station') return this.L.stations[t.id].box;
     const list = t.kind === 'used' ? this.ward.floor : this.ward.escapees;
     const f = list.find((x) => x.id === t.id);
     return f ? { x: f.x - 6, y: f.y - 6, w: 12, h: 12 } : { x: this.ward.doctor.x, y: this.ward.doctor.y - 24, w: 1, h: 1 };
@@ -469,11 +489,15 @@ export class WardScene extends Phaser.Scene {
       return;
     }
     this.paused = true;
+    // how far behind the sound is, as the browser reports it (Bluetooth adds a great deal)
+    const ctx = audioDebug().ctx;
+    const ms = (x: number | undefined) => (x == null ? '?' : `${Math.round(x * 1000)} ms`);
+    const latency = ctx ? `Sound: ${ms(ctx.baseLatency)} in the browser, ${ms(ctx.outputLatency)} to your speakers.` : 'Sound: not started yet.';
     this.showNote({
       speaker: 'The clock has stopped',
       title: 'Paused',
-      body: [`${this.ward.shift.clockText()} — ${this.ward.shift.money} francs so far.`],
-      hint: 'R: start the shift again   ·   T: the title page   ·   M: sound on or off',
+      body: [`${this.ward.day.title}, ${this.ward.shift.clockText()} — ${this.ward.shift.money} francs so far.`, latency],
+      hint: 'R: start the day again   ·   T: the title page   ·   M: sound on or off',
     }, 'E / Space / Esc — carry on');
   }
 
@@ -501,14 +525,13 @@ export class WardScene extends Phaser.Scene {
     this.hud.money.setText(`${ward.shift.money} fr`);
     this.hud.jar.setText(String(s.jar));
     this.hud.jarLabel.setText(String(s.jar));
-    this.hud.stage.setText(STAGE_TITLE[ward.shift.stage]);
+    this.hud.stage.setText(`${ward.day.title} · ${STAGE_TITLE[ward.shift.stage]}`);
     this.hud.mute.setText(isMuted() ? 'sound off (M)' : '');
     const secs = (n: number) => `${Math.max(0, Math.ceil(n))} s`;
     let banner = '';
-    if (s.phase === 'warning') banner = `The Hungarian shipment is late — deliveries stop in ${secs(s.phaseLeft)}`;
-    else if (s.phase === 'active') banner = `No deliveries — Madame Ricard’s boy returns in ${secs(s.phaseLeft)}`;
+    if (!s.deliveries) banner = 'No deliveries today — salt the fed leeches and reuse them';
     else if (s.jar < CONFIG.supply.cap) banner = `Next jar of leeches in ${secs(s.nextDelivery)}`;
-    this.hud.banner.setText(banner).setColor(s.phase === 'warning' || s.phase === 'active' ? '#c8483a' : '#ecdfc0');
+    this.hud.banner.setText(banner).setColor(s.deliveries ? '#ecdfc0' : '#c8483a');
     const salting = ward.salting.reduce((n, x) => n + x.count, 0);
     const back = ward.salting.length ? Math.min(...ward.salting.map((x) => x.left)) : 0;
     this.hud.salt.setText(salting ? `${salting} disgorging\nback in ${secs(back)}` : '');
@@ -528,7 +551,7 @@ export class WardScene extends Phaser.Scene {
     ward.beds.forEach((b, i) => {
       const v = this.bedViews[i];
       const p = b.patient;
-      const { x, y } = BEDS[i];
+      const { x, y } = this.L.beds[i];
       const blink = b.leaving > 0 && Math.floor(b.leaving * 8) % 2 === 0;
       const shown = !!p && !blink;
       v.patient.setVisible(shown);
@@ -541,7 +564,8 @@ export class WardScene extends Phaser.Scene {
         return;
       }
       v.patient.setTexture(ensurePatientTexture(this, lookOf(p)));
-      const shake = p.active && p.type === 'nervous' && p.panic > 0.5 && Math.floor(this.t * 14) % 2 ? 1 : 0;
+      const shiver = p.active && (p.chilled || (p.type === 'nervous' && p.panic > 0.5));
+      const shake = shiver && Math.floor(this.t * 14) % 2 ? 1 : 0;
       const px = x + 2 + shake;
       const py = y + 3;
       place(v.patient, px, py);
@@ -552,7 +576,7 @@ export class WardScene extends Phaser.Scene {
         const frame = Math.min(SATED, Math.floor(l.fed * (SATED + 1)));
         const [sx, sy] = LEECH_SLOTS[slot];
         const wob = Math.floor(this.t * 3 + slot * 1.3) % 4 === 0 ? 1 : 0;
-        img.setTexture(`leech:${frame}`).setVisible(true);
+        img.setTexture(`leech:${frame}:${Math.floor(this.t * 3.2 + slot * 0.7) % 2}`).setVisible(true); // it throbs as it sucks
         place(img, px + sx - 6 + wob, py + sy - 6);
       });
 
@@ -568,13 +592,14 @@ export class WardScene extends Phaser.Scene {
       }
 
       // the warm glow of sugar-water
-      v.warm.setVisible(shown && p.prepared && p.active);
+      v.warm.setVisible(shown && p.cold && p.warmed && p.active);
       place(v.warm, px + 7, py + 8 - (Math.floor(this.t * 3) % 2));
 
       // status bubble
       const zone = p.zone();
       let icon: string | null = null;
       if (p.state === 'fainted') icon = 'icon:faint';
+      else if (p.active && p.chilled) icon = 'icon:cold';
       else if (p.active && zone === 'blue') icon = Math.floor(this.t * 5) % 2 ? 'icon:warn' : null;
       else if (p.active && zone === 'green') icon = 'icon:ready';
       v.icon.setVisible(!!icon && shown);
@@ -677,22 +702,33 @@ export class WardScene extends Phaser.Scene {
     const d = ward.doctor;
     const step = d.moving ? Math.floor(this.t / 0.15) % 2 : 0;
     const depth = DEPTH.world + d.y;
-    this.doctor.setTexture(`doc:${d.facing}:${step}`).setFlipX(d.facing === 'side' && d.flip).setDepth(depth);
-    place(this.doctor, d.x - 7, d.y - 24);
+    const down = d.dazed > 0;
+    if (down) {
+      // flat on the flagstones, stars wheeling
+      this.doctor.setTexture('doc:fallen').setFlipX(d.flip).setDepth(depth);
+      place(this.doctor, d.x - 13, d.y - 10);
+      this.stars.setVisible(true).setTexture(`daze:${Math.floor(this.t * 5) % 2}`);
+      place(this.stars, d.x - 7 + (d.flip ? -6 : 6), d.y - 16);
+    } else {
+      this.stars.setVisible(false);
+      this.doctor.setTexture(`doc:${d.facing}:${step}`).setFlipX(d.facing === 'side' && d.flip).setDepth(depth);
+      place(this.doctor, d.x - 7, d.y - 24);
+    }
+    this.renderOrderlies();
 
     const hand = ward.hand;
     const pumping = this.pumpBed != null;
     this.device.setVisible(pumping);
     if (pumping) {
-      const b = BEDS[this.pumpBed!];
+      const b = this.L.beds[this.pumpBed!];
       const stroke = Math.floor(this.pumpTime / 0.21) % 2;
       const fill = Math.floor(this.pumpTime * 2.5) % 5;
       this.device.setTexture(`cup:${stroke}:${fill}`).setDepth(DEPTH.world + b.y + BED.h);
       place(this.device, b.x + 7, b.y + 12);
     }
-    const key = carryTexture(hand);
+    const key = down ? null : carryTexture(hand);
     this.carry.setVisible(!!key && !pumping);
-    this.carryCount.setVisible(hand?.kind === 'used' && hand.count > 1);
+    this.carryCount.setVisible(!down && hand?.kind === 'used' && hand.count > 1);
     if (key && !pumping) {
       this.carry.setTexture(key).setDepth(depth + 0.5);
       const fr = this.carry.frame;
@@ -700,6 +736,22 @@ export class WardScene extends Phaser.Scene {
       else place(this.carry, d.x - Math.floor(fr.width / 2), d.y - 24 - fr.height + 3);
       if (hand?.kind === 'used') this.carryCount.setText(`×${hand.count}`).setPosition((d.x + 5) * P, (d.y - 36) * P);
     }
+  }
+
+  private renderOrderlies() {
+    const seen = new Set<number>();
+    for (const o of this.ward.orderlies) {
+      seen.add(o.id);
+      let img = this.orderlySprites.get(o.id);
+      if (!img) {
+        img = sprite(this, `orderly:0:${o.load}`);
+        this.orderlySprites.set(o.id, img);
+      }
+      const step = o.moving ? Math.floor(this.t / 0.2) % 2 : 0;
+      img.setTexture(`orderly:${step}:${o.load}`).setFlipX(o.flip).setDepth(DEPTH.world + o.y);
+      place(img, o.x - (o.flip ? 10 : 8), o.y - 25);
+    }
+    for (const [id, img] of this.orderlySprites) if (!seen.has(id)) { img.destroy(); this.orderlySprites.delete(id); }
   }
 
   private renderHighlight() {
@@ -741,6 +793,7 @@ export class WardScene extends Phaser.Scene {
         pallor: e.type === 'anaemic' ? 2 : 0,
         eyes: e.type === 'nervous' ? 'wide' : 'open',
         sweat: e.left < 12,
+        cold: e.cold,
       };
       v.head.setTexture(ensurePatientTexture(this, look)).setCrop(0, 0, 22, 14);
       // how long he'll wait at the door
@@ -759,7 +812,7 @@ export class WardScene extends Phaser.Scene {
 function carryTexture(hand: Hand): string | null {
   if (!hand) return null;
   switch (hand.kind) {
-    case 'leech': return handKey(hand.held);
+    case 'leech': return handKey(Math.min(3, hand.count), Math.floor(performance.now() / 260) % 2);
     case 'used': return 'item:used';
     case 'lint': return 'item:lint';
     case 'sugar': return 'item:sugar';

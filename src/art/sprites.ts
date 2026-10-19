@@ -6,59 +6,118 @@ import Phaser from 'phaser';
 import { Pix } from './pix';
 import { SKIN, HAIR, PALLOR_LADDER, type PaletteKey, type Ramp } from './palette';
 
-// ── Leeches (from Thirty Leeches' sprites.js, plus faces) ────────────────────
+// ── Leeches ──────────────────────────────────────────────────────────────────
+// Hirudo medicinalis, drawn pixel by pixel along a bending spine: a ringed,
+// glistening body that bloats as it feeds, two rusty stripes, a crown of tiny red
+// eyes (they really have ten), and a mouth of three toothed jaws.
 
-const LEECH_FRAMES = [
-  { rx: 1.4, ry: 3.2 },
-  { rx: 1.9, ry: 3.6 },
-  { rx: 2.4, ry: 4.0 },
-  { rx: 2.9, ry: 4.5 },
-];
-export const SATED = LEECH_FRAMES.length - 1;
+export interface LeechShape {
+  cx: number;
+  cy: number;
+  angle: number; // 0 = head up
+  length: number; // art px, head to tail
+  girth: number; // widest half-width
+  bend?: number; // a C-curve: sideways bow at the middle
+  wave?: number; // an S-curve: writhing
+  fed?: number; // 0 hungry … 1 gorged
+  mouth?: 'shut' | 'open';
+  eyes?: boolean;
+}
 
-// One leech centred at (cx, cy), pointing along angle (0 = up).
-export function drawLeech(pix: Pix, cx: number, cy: number, angle: number, frame = 0, scale = 1, face = false) {
-  const { rx: rx0, ry: ry0 } = LEECH_FRAMES[frame];
-  const rx = rx0 * scale;
-  const ry = ry0 * scale;
-  const sated = frame === SATED;
-  const body: PaletteKey = sated ? 'red0' : 'leech1';
-  pix.ellipse(cx, cy, rx, ry, body, { angle });
-  const ox = Math.cos(angle);
-  const oy = Math.sin(angle);
-  pix.ellipse(cx + ox * rx * 0.55, cy + oy * rx * 0.55, rx * 0.5, ry * 0.9, sated ? 'leech1' : 'leech0', { angle, only: (x, y, c) => c === body });
-  pix.ellipse(cx - ox * rx * 0.2, cy - oy * rx * 0.2, Math.max(0.5, rx * 0.25), ry * 0.65, sated ? 'red1' : 'leechStripe',
-    { angle, only: (x, y, c) => c === body && (x + y) % 2 === 0 });
-  const hx = cx + Math.sin(angle) * ry * 0.5;
-  const hy = cy - Math.cos(angle) * ry * 0.5;
-  if (face) {
-    // two beady eyes near the head end
-    pix.set(Math.floor(hx - ox * rx * 0.45), Math.floor(hy - oy * rx * 0.45), 'linen0');
-    pix.set(Math.floor(hx + ox * rx * 0.45), Math.floor(hy + oy * rx * 0.45), 'linen0');
-  } else {
-    pix.set(Math.floor(hx - ox * rx * 0.4), Math.floor(hy - oy * rx * 0.4), 'leechGloss');
+// Half-width along the body, head (0) to tail (1): a narrow head, a swollen
+// middle, and the round sucker it clings with at the back.
+function profile(t: number): number {
+  if (t < 0.16) return 0.32 + 0.5 * (t / 0.16);
+  if (t < 0.8) return 0.82 + 0.18 * Math.sin((Math.PI * (t - 0.16)) / 0.64);
+  return 0.18 + 0.68 * Math.sqrt(Math.max(0, 1 - ((t - 0.8) / 0.2) ** 2));
+}
+
+export function drawLeech(pix: Pix, s: LeechShape) {
+  const N = 40;
+  const ux = Math.sin(s.angle);
+  const uy = -Math.cos(s.angle);
+  const fed = s.fed ?? 0;
+  const spine = Array.from({ length: N }, (_, i) => {
+    const t = i / (N - 1);
+    const along = (0.5 - t) * s.length;
+    const side = (s.bend ?? 0) * Math.sin(Math.PI * t) + (s.wave ?? 0) * Math.sin(2 * Math.PI * t);
+    return { t, x: s.cx + ux * along - uy * side, y: s.cy + uy * along + ux * side };
+  });
+  const tangent = (i: number) => {
+    const a = spine[Math.max(0, i - 1)];
+    const b = spine[Math.min(N - 1, i + 1)];
+    const l = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    return { x: (a.x - b.x) / l, y: (a.y - b.y) / l }; // headwards
+  };
+  const hungry = fed < 0.5;
+  const base: PaletteKey = hungry ? 'leech1' : 'red0';
+  const dark: PaletteKey = hungry ? 'leech0' : 'leech1';
+  const rim: PaletteKey = hungry ? 'leech2' : 'red1';
+  const stripe: PaletteKey = hungry ? 'leechStripe' : 'red2';
+  const r = Math.ceil(s.length / 2 + s.girth + Math.abs(s.bend ?? 0) + Math.abs(s.wave ?? 0)) + 1;
+  for (let y = Math.floor(s.cy - r); y <= s.cy + r; y++) {
+    for (let x = Math.floor(s.cx - r); x <= s.cx + r; x++) {
+      const px = x + 0.5;
+      const py = y + 0.5;
+      let best = Infinity;
+      let bi = 0;
+      for (let i = 0; i < N; i++) {
+        const d = Math.hypot(px - spine[i].x, py - spine[i].y);
+        if (d < best) { best = d; bi = i; }
+      }
+      const t = spine[bi].t;
+      const w = s.girth * profile(t);
+      if (best > w) continue;
+      const tg = tangent(bi);
+      const sn = ((tg.x * (py - spine[bi].y) - tg.y * (px - spine[bi].x)) / Math.max(w, 0.5)); // −1 … 1 across
+      const ring = (t * s.length) / 1.4; // the annuli
+      let c: PaletteKey = base;
+      if (sn > 0.45) c = dark; // the belly side, in shadow
+      else if (sn < -0.55) c = rim;
+      if (ring % 1 < 0.38 && Math.abs(sn) < 0.8) c = dark; // ridges between the rings
+      if (s.length >= 9 && Math.abs(Math.abs(sn) - 0.36) < 0.2 && Math.floor(ring) % 2 === 0 && t > 0.12 && t < 0.86) c = stripe;
+      if (!hungry && Math.floor(ring) % 3 === 1 && Math.abs(sn) < 0.25) c = 'red2'; // blood showing through
+      if (sn < -0.25 && (x * 7 + y * 5) % 7 === 0) c = hungry ? 'leechGloss' : 'red3'; // wet glints along the back
+      pix.set(x, y, c);
+    }
+  }
+  // the head: a crown of little red eyes, and the mouth
+  if (s.eyes !== false) {
+    for (const t of [0.06, 0.13]) {
+      const i = Math.round(t * (N - 1));
+      const tg = tangent(i);
+      const w = s.girth * profile(t) * 0.55;
+      pix.set(Math.floor(spine[i].x - tg.y * w), Math.floor(spine[i].y + tg.x * w), 'red3');
+      pix.set(Math.floor(spine[i].x + tg.y * w), Math.floor(spine[i].y - tg.x * w), 'red3');
+    }
+  }
+  const tip = spine[0];
+  const tg = tangent(0);
+  const mx = Math.floor(tip.x + tg.x * 0.6);
+  const my = Math.floor(tip.y + tg.y * 0.6);
+  pix.set(mx, my, 'ink');
+  if (s.mouth === 'open') {
+    // three jaws in a Y, each with a fringe of teeth
+    pix.set(Math.round(mx + tg.x), Math.round(my + tg.y), 'linen0');
+    pix.set(Math.round(mx - tg.y), Math.round(my + tg.x), 'linen0');
+    pix.set(Math.round(mx + tg.y), Math.round(my - tg.x), 'linen0');
   }
 }
 
-function leech(frame: number, angle: number, opts: { scale?: number; face?: boolean; size?: number } = {}) {
-  const size = opts.size ?? 13;
+function leech(shape: Omit<LeechShape, 'cx' | 'cy'>, size = 13, blood = false) {
   const p = new Pix(size, size);
-  drawLeech(p, size / 2, size / 2, angle, frame, opts.scale ?? 1, opts.face ?? false);
-  return p.outline('leech0');
+  drawLeech(p, { ...shape, cx: size / 2, cy: size / 2 });
+  if (blood) p.set(Math.floor(size / 2) + 3, Math.floor(size / 2) + 3, 'red3').set(Math.floor(size / 2) + 4, Math.floor(size / 2) + 3, 'red2');
+  return p.outline('ink');
 }
 
-// A stubborn leech: curled into a C, face turned away, a frown.
-function stubbornLeech() {
-  const p = new Pix(13, 13);
-  p.ellipse(6.5, 6.5, 4.6, 4.2, 'leech1');
-  p.ellipse(6.5, 6.5, 2.0, 1.8, null);
-  p.rect(7, 4, 4, 3, null); // the gap of the C
-  p.ellipse(4.5, 7, 1.6, 2.5, 'leech0', { only: (x, y, c) => c === 'leech1' });
-  p.dither(2, 3, 9, 8, 'leechStripe', { only: (x, y, c) => c === 'leech1' && y > 8 });
-  // face on the tail end, looking away: a frown and a scowl
-  p.set(9, 8, 'linen0').set(10, 9, 'ink').set(8, 10, 'ink').set(9, 10, 'ink');
-  return p.outline('leech0');
-}
+// Feeding on a chest: four stages of bloat, two of throb (the body pulses as it sucks).
+export const SATED = 3;
+const attached = (frame: number, pulse: number) =>
+  leech({ angle: 0.35, length: 7.5 + frame * 0.9, girth: 1.4 + frame * 0.5 + pulse * 0.35, fed: frame / SATED, mouth: 'shut', eyes: false }, 13);
+
+// Held up in the doctor's fist: writhing, mouths open.
+const writhing = (wave: number, angle: number) => leech({ angle, length: 11, girth: 1.9, wave, mouth: 'open' }, 15);
 
 // ── People ───────────────────────────────────────────────────────────────────
 
@@ -70,6 +129,7 @@ export interface PatientLook {
   pallor: number; // 0–3
   eyes: 'open' | 'closed' | 'wide';
   sweat: boolean;
+  cold: boolean; // blanket to the chin, blue lips
 }
 
 export const PATIENT_W = 22;
@@ -99,11 +159,17 @@ function patient(look: PatientLook) {
   p.rect(cx + 2, 13, half - 3, 12, S[2]);
   p.dither(cx, 13, 2, 12, S[2]);
   p.line(cx - 3, 13, cx, 16, 'linen0').line(cx + 3, 13, cx, 16, 'linen0'); // open collar
-  // army blanket from the waist down: grey wool with a red stripe
-  p.rect(1, 24, 20, 12, 'slate2');
-  p.rect(1, 24, 20, 1, 'slate1');
-  p.rect(1, 28, 20, 2, 'red1');
-  p.dither(13, 25, 8, 11, 'slate1');
+  // army blanket: grey wool with a red stripe, from the waist down — or, if he's
+  // chilled, hauled up to the chin over his chest and arms
+  const top = look.cold ? 12 : 24;
+  p.rect(1, top, 20, 36 - top, 'slate2');
+  p.rect(1, top, 20, 1, 'slate1');
+  p.rect(1, top + 4, 20, 2, 'red1');
+  p.dither(13, top + 1, 8, 35 - top, 'slate1');
+  if (look.cold) {
+    p.rect(cx - half - 1, top - 1, 3, 2, S[1]).rect(cx + half - 1, top - 1, 3, 2, S[1]); // fists clutching the edge
+    p.dither(2, top + 7, 18, 10, 'slate1', { phase: 1 }); // rucked-up folds
+  }
   // head on the pillow
   p.ellipse(cx, headY, r, r + 0.6, S[1]);
   p.dither(cx + 1, headY - 4, 4, 9, S[2], { only: (x, y, c) => c === S[1] });
@@ -122,14 +188,15 @@ function patient(look: PatientLook) {
   }
   if (look.pallor >= 2) p.rect(cx - 3, ey + 1, 2, 1, S[2]).rect(cx + 1, ey + 1, 2, 1, S[2]); // shadows under the eyes
   const mouthY = headY + Math.round(r) - 1;
-  p.rect(cx - 1, mouthY, 2, 1, look.pallor >= 2 ? S[3] : 'red1');
+  p.rect(cx - 1, mouthY, 2, 1, look.cold ? 'blue0' : look.pallor >= 2 ? S[3] : 'red1');
+  if (look.cold) p.set(cx - 2, mouthY, 'blue1').set(cx + 1, mouthY, 'blue1'); // chattering, blue-lipped
   if (look.moustache && !small) p.rect(cx - 2, mouthY - 1, 4, 1, H[1]);
   if (look.sweat) p.set(cx - r - 1, headY - 2, 'blue1').set(cx + r + 1, headY - 1, 'blue1').set(cx + r + 1, headY, 'blue0');
   return p.outline('ink');
 }
 
 export const PATIENT_TEX = (look: PatientLook) =>
-  `pt:${look.skin}:${look.hair}:${look.moustache ? 1 : 0}:${look.build}:${look.pallor}:${look.eyes}:${look.sweat ? 1 : 0}`;
+  `pt:${look.skin}:${look.hair}:${look.moustache ? 1 : 0}:${look.build}:${look.pallor}:${look.eyes}:${look.sweat ? 1 : 0}:${look.cold ? 1 : 0}`;
 
 export function ensurePatientTexture(scene: Phaser.Scene, look: PatientLook): string {
   const key = PATIENT_TEX(look);
@@ -179,6 +246,54 @@ function doctor(facing: Facing, step: number) {
   } else {
     p.ellipse(cx + 0.5, 4.5, 4, 4, 'hairDark');
   }
+  return p.outline('ink');
+}
+
+// Flat on his back after a slip, seen from above: legs one way, head the other.
+function doctorFallen() {
+  const p = new Pix(26, 12);
+  p.rect(1, 4, 7, 2, 'ink').rect(1, 7, 7, 2, 'ink'); // legs
+  p.poly([[8, 2], [19, 2], [20, 10], [8, 10]], 'ink1'); // coat
+  p.rect(10, 4, 7, 4, 'linen1'); // apron
+  p.set(13, 5, 'red2').set(14, 6, 'red1');
+  p.rect(17, 0, 3, 3, 'skinB1').rect(17, 9, 3, 3, 'skinB1'); // arms flung out
+  p.ellipse(22, 6, 3.5, 3.6, 'skinB1'); // head
+  p.ellipse(23.5, 6, 2, 3.6, 'hairDark', { only: (x) => x > 23 });
+  p.set(21, 5, 'ink').set(21, 7, 'ink'); // eyes, rolled
+  return p.outline('ink');
+}
+
+// Stars wheeling round a dazed head.
+function daze(phase: number) {
+  const p = new Pix(15, 6);
+  const star = (x: number, y: number, c: PaletteKey) => p.set(x, y, c).set(x - 1, y, c).set(x + 1, y, c).set(x, y - 1, c).set(x, y + 1, c);
+  if (phase) { star(2, 3, 'brass2'); star(8, 1, 'paper0'); star(13, 4, 'brass2'); }
+  else { star(4, 1, 'paper0'); star(10, 4, 'brass2'); star(13, 1, 'paper0'); }
+  return p;
+}
+
+// An orderly: grey smock, white cap, carrying his load across the ward. Side view, two steps.
+function orderly(step: number, load: number) {
+  const p = new Pix(18, 25);
+  const cx = 8;
+  const l = step ? -1 : 0;
+  p.rect(cx - 2 + l, 20, 2, 4, 'wood1').rect(cx + 1 - l, 20, 2, 4, 'wood0'); // legs
+  p.poly([[cx - 4, 10], [cx + 4, 10], [cx + 5, 21], [cx - 5, 21]], 'slate2'); // smock
+  p.rect(cx - 4, 10, 2, 11, 'slate1');
+  p.ellipse(cx + 0.5, 6, 3.6, 4, 'skinC1'); // head
+  p.rect(cx - 3, 1, 7, 3, 'linen0'); // cap
+  p.set(cx + 3, 6, 'ink');
+  // the load, held out in front
+  if (load === 0) { // a basket of soiled linen
+    p.rect(cx + 2, 12, 8, 6, 'wood3').rect(cx + 2, 12, 8, 1, 'wood4');
+    p.rect(cx + 3, 10, 6, 2, 'linen1').set(cx + 5, 11, 'red1');
+  } else if (load === 1) { // a slop pail
+    p.rect(cx + 3, 12, 6, 7, 'slate1').rect(cx + 3, 12, 6, 1, 'slate2');
+    p.rect(cx + 4, 13, 4, 1, 'brass0');
+  } else { // a pile of blankets
+    p.rect(cx + 2, 11, 8, 6, 'slate2').rect(cx + 2, 13, 8, 1, 'red1').rect(cx + 2, 15, 8, 1, 'slate1');
+  }
+  p.rect(cx + 1, 13, 2, 2, 'skinC1'); // hands
   return p.outline('ink');
 }
 
@@ -258,6 +373,11 @@ const ICONS: Record<string, () => Pix> = {
     p.ellipse(6, 5, 1.4, 1.2, 'paper3');
   }, 'meterGreen1'),
   'icon:warn': () => bubble((p) => { p.rect(5, 2, 2, 4, 'red2'); p.rect(5, 7, 2, 1, 'red2'); }),
+  // chilled: a snowflake in a cold blue bubble
+  'icon:cold': () => bubble((p) => {
+    p.rect(5, 1, 2, 8, 'linen0').rect(2, 4, 8, 2, 'linen0');
+    p.set(3, 2, 'linen0').set(8, 2, 'linen0').set(3, 7, 'linen0').set(8, 7, 'linen0');
+  }, 'meterBlue'),
   'icon:faint': () => bubble((p) => {
     p.rect(1, 3, 10, 1, 'wood3').rect(1, 7, 10, 1, 'wood3');
     p.rect(2, 4, 8, 3, 'linen1');
@@ -408,11 +528,14 @@ function windowTex() {
 
 // ── Registration ────────────────────────────────────────────────────────────
 
-// A handful of hungry leeches held up, the stubborn ones curled: 'hand:ls' = a leech and a sulker.
-export const handKey = (held: boolean[]) => `hand:${held.map((s) => (s ? 's' : 'l')).join('')}`;
-function handful(held: boolean[]) {
-  const p = new Pix(13 + 8 * (held.length - 1), 15);
-  held.forEach((s, i) => p.blit(s ? stubbornLeech() : leech(1, (i - 1) * 0.35, { face: true }), i * 8, i % 2 ? 0 : 2));
+// A handful of hungry leeches held up, writhing: 'hand:2:1' = two, second writhe.
+export const handKey = (count: number, writhe: number) => `hand:${count}:${writhe}`;
+function handful(count: number, writhe: number) {
+  const p = new Pix(15 + 7 * (count - 1), 17);
+  for (let i = 0; i < count; i++) {
+    const w = (i + writhe) % 2 ? 1.3 : -1.3;
+    p.blit(writhing(w, (i - (count - 1) / 2) * 0.35), i * 7, i % 2 ? 0 : 2);
+  }
   return p;
 }
 
@@ -425,16 +548,21 @@ export function registerTextures(scene: Phaser.Scene) {
     if (!scene.textures.exists(key)) scene.textures.addCanvas(key, pix.canvas());
   };
   for (const f of ['down', 'up', 'side'] as Facing[]) for (const s of [0, 1]) add(`doc:${f}:${s}`, doctor(f, s));
-  // attached leeches: each feeding frame, pointing in toward the chest
-  for (let f = 0; f <= SATED; f++) add(`leech:${f}`, leech(f, 0.35));
-  add('item:leech', leech(1, 0, { scale: 1.25, face: true, size: 15 }));
-  add('item:stubborn', stubbornLeech());
-  add('item:used', leech(SATED, 0.9, { face: false }));
-  for (let a = 0; a < 4; a++) add(`floor:used:${a}`, leech(SATED, a * 1.4 + 0.3));
+  add('doc:fallen', doctorFallen());
+  add('daze:0', daze(0));
+  add('daze:1', daze(1));
+  for (let s = 0; s < 2; s++) for (let l = 0; l < 3; l++) add(`orderly:${s}:${l}`, orderly(s, l));
+  // attached leeches: each feeding frame, two throbs, pointing in toward the chest
+  for (let f = 0; f <= SATED; f++) for (let u = 0; u < 2; u++) add(`leech:${f}:${u}`, attached(f, u));
+  add('item:leech', writhing(1.2, 0));
+  add('item:used', leech({ angle: 0.9, length: 8, girth: 3.1, bend: 1, fed: 1, mouth: 'shut', eyes: false }, 13));
+  // fed leeches on the floor: bloated, glistening, a smear of blood
+  for (let a = 0; a < 4; a++) add(`floor:used:${a}`, leech({ angle: a * 1.4 + 0.3, length: 8.5, girth: 3, bend: a % 2 ? 1.2 : -1.2, fed: 1, mouth: 'shut', eyes: false }, 13, true));
+  // escapees: an inchworm crawl — stretched out, mouth open and questing; then hunched up
   for (let d = 0; d < ESCAPE_ANGLES; d++) {
     const angle = d * (Math.PI * 2 / ESCAPE_ANGLES);
-    add(escapeKey(d, 0), leech(1, angle - 0.25, { face: true, scale: 1.3, size: 15 }));
-    add(escapeKey(d, 1), leech(0, angle + 0.25, { face: true, scale: 1.4, size: 15 }));
+    add(escapeKey(d, 0), leech({ angle, length: 12.5, girth: 1.6, wave: 0.7, mouth: 'open' }, 15));
+    add(escapeKey(d, 1), leech({ angle, length: 8, girth: 2.3, bend: 2.2, mouth: 'shut' }, 15));
   }
   add('item:lint', lint());
   add('item:sugar', sugarWater());
@@ -455,11 +583,6 @@ export function registerTextures(scene: Phaser.Scene) {
   add('wall', wallTile());
   add('window', windowTex());
   add('dither', dither());
-  for (let n = 1; n <= 3; n++) {
-    for (let bits = 0; bits < 1 << n; bits++) {
-      const held = Array.from({ length: n }, (_, i) => !!(bits & (1 << i)));
-      add(handKey(held), handful(held));
-    }
-  }
+  for (let n = 1; n <= 3; n++) for (let w = 0; w < 2; w++) add(handKey(n, w), handful(n, w));
   for (const [key, draw] of Object.entries(ICONS)) add(key, draw());
 }

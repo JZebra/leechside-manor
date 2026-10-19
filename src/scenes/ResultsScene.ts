@@ -1,13 +1,14 @@
-// Six o'clock: the shift report, with Broussais's verdict stamped on it.
+// Six o'clock: the day's report, with Broussais's verdict stamped on it. From here,
+// the next day (or, after the third, the title page).
 
 import Phaser from 'phaser';
 import { CONFIG } from '../config';
 import { hex, type PaletteKey } from '../art/palette';
-import { OUTCOME_LABEL, VERDICT_REMARK } from '../data/lines';
+import { OUTCOME_LABEL, VERDICT_REMARK, FINAL_REMARK } from '../data/lines';
 import type { Ward } from '../model/ward';
 import { sfx } from '../audio/audio';
 import { fitCamera, text, panel, STAGE } from '../ui/view';
-import { saveBest } from '../ui/best';
+import { finishDay } from '../ui/progress';
 
 const OUTCOME_COLOUR: Record<string, PaletteKey> = {
   green: 'stamp0',
@@ -31,8 +32,16 @@ export class ResultsScene extends Phaser.Scene {
     const g = this.add.graphics();
     panel(g, 60, 36, 1160, 648, 'paper1');
 
-    text(this, 100, 62, 'Salle Saint-Côme — the day’s report', { font: 'display', size: 40 });
-    text(this, 102, 112, 'Val-de-Grâce military hospital · for the attention of the Physician-in-Chief', { size: 18, italic: true, color: 'red1' });
+    const day = shift.day;
+    const last = day === CONFIG.days.length - 1;
+    // the run so far: each day's takings, kept while the game is open
+    const run = (this.registry.get('run') as number[] | undefined) ?? [];
+    run[day] = shift.money;
+    this.registry.set('run', run);
+    const record = finishDay(day, shift.money);
+
+    text(this, 100, 62, `${ward.layout.name} — the day’s report`, { font: 'display', size: 40 });
+    text(this, 102, 112, `${shift.spec.title.replace(/ —.*/, '')} · Val-de-Grâce military hospital · for the attention of the Physician-in-Chief`, { size: 18, italic: true, color: 'red1' });
 
     // the patients, in two columns
     const log = shift.log;
@@ -57,13 +66,13 @@ export class ResultsScene extends Phaser.Scene {
       `Fainted: ${counts('faint')}`,
       `Gave up waiting: ${counts('walkedOut')}`,
       `Leeches applied: ${ward.applied}`,
-      `Leeches down the drain: ${ward.lost}`,
+      `Leeches lost: ${ward.lost}${ward.slips ? ` (${ward.slips} squashed underfoot)` : ''}`,
       `Fed leeches left on the floor: ${ward.floorAtBell}`,
     ];
     text(this, 920, 156, lines.join('\n'), { size: 18, lineSpacing: 6 });
     text(this, 920, 372, `Takings: ${shift.money} francs`, { font: 'display', size: 30, color: shift.money >= 0 ? 'ink' : 'red2' });
-    const v = CONFIG.score.verdict;
-    if (saveBest({ money: shift.money, verdict: shift.verdict() })) text(this, 1196, 380, 'a new best', { size: 16, italic: true, color: 'red2' }).setOrigin(1, 0);
+    const v = shift.spec.verdict;
+    if (record) text(this, 1196, 344, 'a new best for this day', { size: 16, italic: true, color: 'red2' }).setOrigin(1, 0);
     text(this, 922, 412, `Approved at ${v.approved} fr · noted at ${v.noted} fr`, { size: 15, italic: true, color: 'wood3' });
 
     // Broussais's stamp, thumped down in steps
@@ -80,7 +89,11 @@ export class ResultsScene extends Phaser.Scene {
     stamp.add(sg);
     stamp.add(word);
     stamp.setScale(1.6).setVisible(false);
-    text(this, 920, 572, VERDICT_REMARK[verdict], { size: 18, italic: true, wrap: 280, color: 'wood2' });
+    const total = run.reduce((a, b) => a + (b ?? 0), 0);
+    const remark = last && run.filter((x) => x != null).length === CONFIG.days.length
+      ? `${FINAL_REMARK} Three days: ${total} francs.`
+      : VERDICT_REMARK[verdict];
+    text(this, 920, 572, remark, { size: 18, italic: true, wrap: 280, color: 'wood2' });
     text(this, 1196, 648, '— F.-J.-V. Broussais', { size: 16, italic: true, color: 'wood3' }).setOrigin(1, 0);
 
     this.time.delayedCall(700, () => {
@@ -88,16 +101,19 @@ export class ResultsScene extends Phaser.Scene {
       this.tweens.add({ targets: stamp, scale: 1, duration: 160, ease: 'Stepped', easeParams: [3], onComplete: () => sfx('stamp') });
     });
 
-    text(this, 100, 648, 'E / Space — work another shift   ·   T — the title page', { font: 'display', size: 22, color: 'red2' });
+    const next = last ? 'E / Space — the title page' : `E / Space — ${CONFIG.days[day + 1].title}`;
+    text(this, 100, 648, `${next}   ·   R — this day again   ·   T — title`, { font: 'display', size: 22, color: 'red2' });
     const kb = this.input.keyboard!;
-    const again = () => {
+    const go = () => {
       sfx('page');
-      this.scene.start('ward');
+      if (last) this.scene.start('title');
+      else this.scene.start('ward', { day: day + 1 });
     };
     this.time.delayedCall(800, () => {
-      kb.on('keydown-E', again);
-      kb.on('keydown-SPACE', again);
-      kb.on('keydown-ENTER', again);
+      kb.on('keydown-E', go);
+      kb.on('keydown-SPACE', go);
+      kb.on('keydown-ENTER', go);
+      kb.on('keydown-R', () => this.scene.start('ward', { day }));
       kb.on('keydown-T', () => this.scene.start('title'));
     });
   }

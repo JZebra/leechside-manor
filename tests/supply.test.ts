@@ -1,40 +1,32 @@
 import { describe, it, expect } from 'vitest';
-import { Supply, type SupplyEvent } from '../src/model/supply';
+import { Supply } from '../src/model/supply';
 import { CONFIG } from '../src/config';
 
 const run = (s: Supply, seconds: number) => {
-  const ev: SupplyEvent[] = [];
-  for (let t = 0; t < seconds; t += 0.5) ev.push(...s.tick(0.5));
-  return ev;
+  const out = [];
+  for (let t = 0; t < seconds; t += 0.1) out.push(...s.tick(0.1));
+  return out;
 };
 
 describe('Supply', () => {
-  it('delivers on schedule up to the cap', () => {
-    const s = new Supply();
-    const ev = run(s, CONFIG.supply.deliveryEvery + 1);
-    expect(ev.some((e) => e.kind === 'delivery')).toBe(true);
-    run(s, 600);
+  it('her boy brings leeches up to the cap', () => {
+    const s = new Supply(8, true);
+    const ev = run(s, CONFIG.supply.deliveryEvery * 6);
+    expect(ev.length).toBeGreaterThan(0);
     expect(s.jar).toBe(CONFIG.supply.cap);
   });
 
-  it('a shortage warns, stops deliveries for a known time, then resumes at once', () => {
-    const s = new Supply();
-    s.jar = 0;
-    expect(s.beginShortage()).toEqual([{ kind: 'shortageWarning' }]);
-    const ev = run(s, CONFIG.supply.shortage.warnSeconds + 1);
-    expect(ev.some((e) => e.kind === 'shortageStart')).toBe(true);
-    const jarAtStart = s.jar;
-    const during = run(s, CONFIG.supply.shortage.seconds - 2);
-    expect(during.some((e) => e.kind === 'delivery')).toBe(false);
-    expect(s.jar).toBe(jarAtStart);
-    const after = run(s, 3);
-    expect(after.some((e) => e.kind === 'shortageEnd')).toBe(true);
-    expect(after.some((e) => e.kind === 'delivery')).toBe(true);
+  it('on the day of the shortage nothing comes', () => {
+    const s = new Supply(14, false);
+    s.take();
+    expect(run(s, 200)).toEqual([]);
+    expect(s.jar).toBe(13);
   });
 
-  it('cannot take from an empty jar', () => {
-    const s = new Supply();
-    s.jar = 0;
+  it('an empty jar gives nothing', () => {
+    const s = new Supply(1, false);
+    expect(s.take()).toBe(true);
     expect(s.take()).toBe(false);
+    expect(s.jar).toBe(0);
   });
 });

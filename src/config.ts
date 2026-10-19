@@ -2,37 +2,93 @@
 // overlapping tasks, not short timers. Blood is a 0–1 "drawn" meter per patient.
 
 export type PatientType = 'soldier' | 'anaemic' | 'drummer' | 'nervous';
-export type StageId = 'basics' | 'frail' | 'stubborn' | 'machine' | 'shortage';
+export type StageId = 'basics' | 'frail' | 'promotion' | 'machine' | 'shortage' | 'drummers';
+export type WardId = 'saintCome' | 'saintLouis';
+
+export interface DaySpec {
+  title: string;
+  ward: WardId;
+  realSeconds: number; // 8:00 to the six o'clock bell, in real seconds
+  jar: number; // leeches in Madame Ricard's jar at eight
+  deliveries: boolean; // does her boy bring more during the day?
+  escapes: boolean; // do hungry leeches climb out of the jar?
+  orderlies: boolean; // orderlies crossing the ward
+  coldChance: number; // share of men who arrive chilled (no leech takes until warmed)
+  stages: { id: StageId; at: number }[]; // clock minutes; each opens with a note (data/lines.ts)
+  verdict: { approved: number; noted: number }; // francs at six (see npm run sim)
+}
+
+export interface StageSpec {
+  interval: number; // seconds between arrivals
+  mix: Partial<Record<PatientType, number>>; // which men arrive (weights)
+  machine?: boolean; // the bdellometer is on its stand from this stage
+}
 
 export const CONFIG = {
-  // One shift: 8:00 to the six o'clock bell.
   shift: {
-    realSeconds: 420, // ~7 minutes of play
     startMinutes: 8 * 60,
     endMinutes: 18 * 60,
   },
 
-  // Mechanics arrive in stages, each announced by a note (data/lines.ts).
-  stages: [
-    { id: 'basics', at: 8 * 60 },
-    { id: 'frail', at: 10 * 60 },
-    { id: 'stubborn', at: 12 * 60 },
-    { id: 'machine', at: 13 * 60 + 30 },
-    { id: 'shortage', at: 15 * 60 },
-  ] as { id: StageId; at: number }[],
+  days: [
+    {
+      title: 'Day 1 — the Salle Saint-Côme',
+      ward: 'saintCome',
+      realSeconds: 200,
+      jar: 9,
+      deliveries: true,
+      escapes: false,
+      orderlies: false,
+      coldChance: 0,
+      stages: [
+        { id: 'basics', at: 8 * 60 },
+        { id: 'frail', at: 12 * 60 },
+      ],
+      verdict: { approved: 115, noted: 65 },
+    },
+    {
+      title: 'Day 2 — the Salle Saint-Louis',
+      ward: 'saintLouis',
+      realSeconds: 230,
+      jar: 10,
+      deliveries: true,
+      escapes: true,
+      orderlies: true,
+      coldChance: 0.25,
+      stages: [
+        { id: 'promotion', at: 8 * 60 },
+        { id: 'machine', at: 12 * 60 + 30 },
+      ],
+      verdict: { approved: 80, noted: 35 },
+    },
+    {
+      title: 'Day 3 — the great shortage',
+      ward: 'saintLouis',
+      realSeconds: 230,
+      jar: 18,
+      deliveries: false,
+      escapes: true,
+      orderlies: true,
+      coldChance: 0.2,
+      stages: [
+        { id: 'shortage', at: 8 * 60 },
+        { id: 'drummers', at: 12 * 60 },
+      ],
+      verdict: { approved: 70, noted: 30 },
+    },
+  ] as DaySpec[],
+
+  stages: {
+    basics: { interval: 17, mix: { soldier: 1 } },
+    frail: { interval: 14, mix: { soldier: 3, anaemic: 1.4 } },
+    promotion: { interval: 13, mix: { soldier: 3, anaemic: 1 } },
+    machine: { interval: 12, mix: { soldier: 3, anaemic: 1.2 }, machine: true },
+    shortage: { interval: 14, mix: { soldier: 3, anaemic: 1.2 }, machine: true },
+    drummers: { interval: 13, mix: { soldier: 3, anaemic: 1, drummer: 0.9, nervous: 0.9 }, machine: true },
+  } as Record<StageId, StageSpec>,
 
   arrivals: {
     opening: 2, // patients already waiting at 8:00
-    // seconds between arrivals, by stage
-    interval: { basics: 20, frail: 17, stubborn: 15, machine: 14, shortage: 13 } as Record<StageId, number>,
-    // which patient types arrive, by stage (weights)
-    mix: {
-      basics: { soldier: 1 },
-      frail: { soldier: 3, anaemic: 1 },
-      stubborn: { soldier: 3, anaemic: 1 },
-      machine: { soldier: 3, anaemic: 1.2 },
-      shortage: { soldier: 3, anaemic: 1.2, drummer: 0.8, nervous: 0.8 },
-    } as Record<StageId, Partial<Record<PatientType, number>>>,
   },
 
   patient: {
@@ -58,16 +114,15 @@ export const CONFIG = {
     feedSeconds: 9, // hungry → sated
     extraction: 0.022, // blood per second while feeding (≈0.2 per leech)
     afterBleed: 0.008, // blood per second per open bite, until lint
-    stubbornChance: 0.18, // from the 'stubborn' stage
     escape: {
-      every: 16, // seconds between escape checks, from the 'stubborn' stage
-      chance: 0.55,
+      every: 16, // seconds between escape checks (days with escapes)
+      chance: 0.5,
       minJar: 2, // leeches only escape from a jar with at least this many
       crawlSpeed: 8, // art px per second
       seekPatient: 0.5, // chance an escapee heads for a patient rather than the drain
       latchRange: 10, // art px: an escapee this close to an unattended patient climbs on
     },
-    recycleSeconds: 40, // salted leeches disgorge and go back in the jar (they really did)
+    recycleSeconds: 30, // salted leeches disgorge and go back in the jar (they really did)
   },
 
   machine: {
@@ -75,11 +130,21 @@ export const CONFIG = {
   },
 
   supply: {
-    start: 8,
     cap: 14,
     deliveryEvery: 24, // seconds
     deliverySize: 4,
-    shortage: { warnSeconds: 12, seconds: 70 }, // starts with the 'shortage' stage
+  },
+
+  orderly: {
+    every: 9, // seconds between orderlies crossing (days with orderlies)
+    speed: 34, // art px per second
+    patience: 2.5, // seconds an orderly waits for the doctor to move before squeezing past
+  },
+
+  slip: {
+    chance: 0.25, // per fed leech stepped on while walking
+    radius: 3, // art px from the doctor's feet
+    dazed: 3, // seconds on the floor
   },
 
   score: {
@@ -88,16 +153,15 @@ export const CONFIG = {
     late: 7, // lint in the blue, before he faints
     faint: -10,
     walkedOut: -6,
-    leechLost: -2,
+    leechLost: -2, // down the drain, or squashed underfoot
     floorLeech: -1, // each fed leech still on the floor at six
-    verdict: { approved: 165, noted: 95 }, // francs at six o'clock (see npm run sim)
   },
 
   doctor: {
     speed: 78, // art px per second
     carrying: 0.55, // speed multiplier while carrying a fainted man
-    reach: 16, // art px from the doctor's feet to a target's edge
-    pickReach: 14, // art px to a leech on the floor
+    reach: 14, // art px from the doctor's feet to a bed, or to a station's base
+    pickReach: 12, // art px to a leech on the floor
     handful: 3, // hungry leeches carried at once
     scoop: 5, // fed leeches carried in one handful
     calmRange: 26, // art px: a nervous man is calmed while the doctor is this close
