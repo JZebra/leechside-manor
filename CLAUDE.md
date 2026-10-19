@@ -2,7 +2,9 @@
 
 Overcooked-style co-op-less chaos in a leech ward: the house physician of the Salle Saint-Côme
 (Val-de-Grâce, Paris, early 1830s) bleeds soldiers with leeches for Broussais, one shift from 8:00 to
-the six o'clock bell. Sister project of `../thirty-leeches` (same palette, Pix, sounds, fonts, plate).
+the six o'clock bell. Sister project of `../thirty-leeches` (same palette, Pix, sounds, fonts).
+Title plate: BnF Français 127 f. 258r (Boccaccio, *Des cas des nobles hommes et femmes*), via the BnF's
+IIIF server; BnF terms allow free non-commercial reuse with the credit "Source gallica.bnf.fr / BnF".
 The design brief is `BRIEF.md`.
 
 ## Commands
@@ -19,7 +21,7 @@ The design brief is `BRIEF.md`.
   `patient.ts` (blood meter, leeches feeding, after-bleed, panic, faint), `supply.ts` (jar, deliveries,
   shortage), `shift.ts` (clock, stages, arrivals, takings), `ward.ts` (doctor movement + collision,
   targeting, the hand, beds and queue, floor leeches, escapes, salting), `layout.ts` (floor plan in art px).
-- `src/scenes/` — Phaser: Boot (textures), Title (Traviès plate), Ward (input → model → drawing), Results.
+- `src/scenes/` — Phaser: Boot (textures), Title (BnF Fr. 127 miniature: Galerius eaten by worms), Ward (input → model → drawing), Results.
 - `src/art/` — `palette.ts` (Thirty Leeches palette + additions), `pix.ts` (palette-locked buffer),
   `sprites.ts` (every sprite drawn procedurally and registered as a texture).
 - `src/audio/` — Thirty Leeches' sound system: file → filtered noise → jsfxr; `sounds.ts` lists them.

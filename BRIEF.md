@@ -49,7 +49,7 @@ Port these rather than reinventing them (JS → TS, DOM → Phaser textures):
 | Names, ranks, regiments of the 1828 Paris garrison | `src/data/names.js` | Patient tickets |
 | Sound system: recorded file → filtered noise → jsfxr, with 13 sounds (page, plip, squelch, salt, bell, stamp, thud, gasp…) | `src/ui/audio.js`, `src/data/sounds.js` | All SFX; add pump, stretcher, kettle, crawl |
 | Fonts: IM Fell English (headings), EB Garamond (everything else), Latin subsets | `@fontsource/*` | HUD, cards, results |
-| Title plate: C.-J. Traviès, *Encore quatre-vingt-dix sangsues!*, Paris c. 1827, public domain (Wellcome) | `public/art/` | Title screen, credited |
+| Title plate: *Mort de Galerius*, Boccaccio, *Des cas des nobles hommes et femmes*, Paris, 3rd quarter 15th c., BnF Français 127 f. 258r (non-commercial reuse, credit "Source gallica.bnf.fr / BnF") | `public/art/` | Title screen, credited |
 | Period voices: Broussais's memos, Sister Marthe's notes, Madame Ricard at the counter | `src/data/text.js`, `src/ui/screens/evening.js` | Shift announcements |
 | Propositions 266 (children bleed beyond measure), 268 (don't bleed the bloodless), 332 (stop bites that bleed through a faint) | `src/data/propositions.js` | Tutorial cards that explain patient types |
 | Audit stamps APPROVED / NOTED / REPRIMAND and remarks | `src/data/economy.js` | End-of-shift verdict |
@@ -277,7 +277,7 @@ A small headless test should be able to run the patient and leech state machines
 - **P3 — Bdellometer, supply, shortages.**
 - **P4 — Escapes.**
 - **P5 — Optional complications** (§7.6), then drummer boys and nervous conscripts.
-- **P6 — Polish and submission:** title screen with the Traviès plate, a short tutorial (the stage
+- **P6 — Polish and submission:** title screen with the period plate, a short tutorial (the stage
   notes), results and restart, sounds, a production build tested in an iframe.
 
 ## 14. Testing

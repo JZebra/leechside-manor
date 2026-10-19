@@ -129,6 +129,9 @@ function playBuffer(c: AudioContext, out: AudioNode, buf: AudioBuffer, rate: num
 
 export const isMuted = () => muted;
 
+// For diagnosis: the context and master bus (latency figures, in-graph timing).
+export const audioDebug = () => ({ ctx, master });
+
 export function setMuted(m: boolean) {
   muted = m;
   try {
