@@ -1,5 +1,5 @@
 {
-  "name": "leech-clinic",
+  "name": "leechside-manor",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "zip": "npm run build && rm -f leech-clinic-itch.zip && cd dist && zip -qr ../leech-clinic-itch.zip .",
+    "zip": "npm run build && rm -f leechside-manor-itch.zip && cd dist && zip -qr ../leechside-manor-itch.zip .",
     "sim": "vite-node scripts/sim.ts"
   },
   "dependencies": {

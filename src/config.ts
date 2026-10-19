@@ -162,6 +162,14 @@ export const CONFIG = {
     dazed: 3, // seconds on the floor
   },
 
+  // Shift: run. Faster, but every fed leech underfoot sends him flying, and running into
+  // an orderly knocks him down.
+  run: {
+    speed: 1.7, // × walking speed
+    slipChance: 1, // per fed leech stepped on while running
+    stunned: 3, // seconds on the floor after running into an orderly
+  },
+
   score: {
     green: 12, // francs: bled just right
     early: 5, // lint before the green

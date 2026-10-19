@@ -78,7 +78,7 @@ export const STAGE_NOTES: Record<StageId, Note> = {
   },
 };
 
-export const CONTROLS = 'WASD / arrows: walk  ·  E / Space: take, give, apply (hold to pump)  ·  Esc: pause  ·  M: mute';
+export const CONTROLS = 'WASD / arrows: walk (Shift: run)  ·  E / Space: take, give, apply (hold to pump)  ·  Esc: pause  ·  M: mute';
 
 export const VERB = {
   takeLeech: 'Take a leech',
@@ -134,6 +134,7 @@ export const SAY = {
   recycled: (n: number) => `${n} back in the jar`,
   slip: 'Slipped on a leech!',
   jostle: 'Pardon, Monsieur!',
+  collide: 'Ran into an orderly!',
   bell: 'The six o’clock bell',
 };
 

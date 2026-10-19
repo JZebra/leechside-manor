@@ -215,6 +215,45 @@ describe('the ward', () => {
     expect(w.doctor.dazed).toBe(0);
   });
 
+  it('running (Shift) is faster', () => {
+    const walker = new Ward('run');
+    const runner = new Ward('run');
+    at(walker, 40, 200, 'side');
+    at(runner, 40, 200, 'side');
+    walker.walk(1, 0, 0.5);
+    runner.walk(1, 0, 0.5, true);
+    expect(runner.doctor.x - 40).toBeCloseTo((walker.doctor.x - 40) * CONFIG.run.speed, 3);
+  });
+
+  it('running over a single fed leech always floors him', () => {
+    for (const seed of ['r1', 'r2', 'r3', 'r4', 'r5']) {
+      const w = new Ward(seed);
+      at(w, 40, 200, 'side');
+      w.floor.push({ id: 1000, x: 52, y: 200, angle: 0 });
+      let slipped = false;
+      for (let i = 0; i < 20 && !slipped; i++) slipped = w.walk(1, 0, 0.03, true).some((e) => e.kind === 'slip');
+      expect(slipped).toBe(true);
+      expect(w.doctor.dazed).toBe(CONFIG.slip.dazed);
+    }
+  });
+
+  it('running into an orderly knocks him down for 3 s; walking into one does not', () => {
+    for (const run of [false, true]) {
+      const w = new Ward('bump', DAY2);
+      w.orderlies.push({ id: 77, x: 200, y: 147, route: [{ x: 200, y: 147 }, { x: 201, y: 147 }], leg: 1, waited: 0, facing: 'side', flip: false, moving: false, load: 0 });
+      at(w, 180, 147, 'side');
+      let ev: ReturnType<Ward['walk']> = [];
+      for (let i = 0; i < 20 && !ev.length; i++) ev = w.walk(1, 0, 0.05, run);
+      if (run) {
+        expect(ev).toContainEqual(expect.objectContaining({ kind: 'collide' }));
+        expect(w.doctor.dazed).toBe(CONFIG.run.stunned);
+      } else {
+        expect(w.doctor.dazed).toBe(0);
+        expect(w.doctor.x).toBeLessThan(200 - 8); // simply stopped by him
+      }
+    }
+  });
+
   it('day two: orderlies cross the ward and block the doctor', () => {
     const w = new Ward('orderlies', DAY2);
     let seen = false;

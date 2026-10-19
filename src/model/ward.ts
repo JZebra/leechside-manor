@@ -89,7 +89,8 @@ export type WardEvent =
   | { kind: 'deviceArrives' }
   | { kind: 'stoveArrives' }
   | { kind: 'slip'; fee: number; spilled: number }
-  | { kind: 'jostle'; x: number; y: number };
+  | { kind: 'jostle'; x: number; y: number }
+  | { kind: 'collide'; x: number; y: number }; // ran into an orderly
 
 export type Facing = 'down' | 'up' | 'side';
 
@@ -108,7 +109,7 @@ export class Ward {
   readonly escapees: Escapee[] = [];
   readonly salting: Salting[] = [];
   readonly orderlies: Orderly[] = [];
-  readonly doctor: { x: number; y: number; facing: Facing; flip: boolean; moving: boolean; dazed: number };
+  readonly doctor: { x: number; y: number; facing: Facing; flip: boolean; moving: boolean; running: boolean; dazed: number };
   hand: Hand = null;
   deviceOnStand = false; // the bdellometer arrives with a 'machine' stage
   stoveIn = false; // the stove (for hot-water bottles) arrives with a 'stove' stage
@@ -135,7 +136,7 @@ export class Ward {
     this.walls = obstaclesOf(this.layout).filter((r) => r !== stoveFoot);
     this.beds = this.layout.beds.map((_, index) => ({ index, patient: null, bites: [], freeIn: 0, leaving: 0 }));
     const s = this.layout.doctorStart;
-    this.doctor = { x: s.x, y: s.y, facing: 'down', flip: false, moving: false, dazed: 0 };
+    this.doctor = { x: s.x, y: s.y, facing: 'down', flip: false, moving: false, running: false, dazed: 0 };
   }
 
   get over() {
@@ -152,20 +153,22 @@ export class Ward {
 
   // ── Movement ──────────────────────────────────────────────────────────────
 
-  walk(ix: number, iy: number, dt: number): WardEvent[] {
+  // run: Shift held. Faster, but no care for what's underfoot or who's in the way.
+  walk(ix: number, iy: number, dt: number, run = false): WardEvent[] {
     const d = this.doctor;
     const len = Math.hypot(ix, iy);
     d.moving = len > 0 && d.dazed <= 0;
+    d.running = d.moving && run;
     if (!d.moving) return [];
     if (Math.abs(ix) > Math.abs(iy)) {
       d.facing = 'side';
       d.flip = ix < 0;
     } else d.facing = iy < 0 ? 'up' : 'down';
-    const speed = CONFIG.doctor.speed * (this.hand?.kind === 'stretcher' ? CONFIG.doctor.carrying : 1);
+    const speed = CONFIG.doctor.speed * (this.hand?.kind === 'stretcher' ? CONFIG.doctor.carrying : 1) * (run ? CONFIG.run.speed : 1);
     const step = (speed * dt) / len;
-    this.moveAxis(ix * step, 0);
-    this.moveAxis(0, iy * step);
-    return this.checkFooting();
+    const hit = this.moveAxis(ix * step, 0) ?? this.moveAxis(0, iy * step);
+    if (hit && run) return this.collide(hit);
+    return this.checkFooting(run);
   }
 
   private blocked(r: Rect): boolean {
@@ -173,20 +176,34 @@ export class Ward {
     return this.walls.some((o) => overlaps(r, o)) || (!!stove && overlaps(r, stove)) || this.orderlies.some((o) => overlaps(r, bulkOf(o)));
   }
 
-  private moveAxis(dx: number, dy: number) {
+  // Move along one axis if the way is clear. Returns the orderly in the way, if that's what stopped him.
+  private moveAxis(dx: number, dy: number): Orderly | null {
     const d = this.doctor;
     const w = this.layout.walk;
     const nx = Math.min(w.x1, Math.max(w.x0, d.x + dx));
     const ny = Math.min(w.y1, Math.max(w.y0, d.y + dy));
-    if (!this.blocked(footOf(nx, ny))) {
+    const foot = footOf(nx, ny);
+    if (!this.blocked(foot)) {
       d.x = nx;
       d.y = ny;
+      return null;
     }
+    return this.orderlies.find((o) => overlaps(foot, bulkOf(o))) ?? null;
   }
 
-  // Fed leeches on the floor are slippery: one chance to go over per leech stepped on.
+  // Running full tilt into an orderly: down he goes.
+  private collide(o: Orderly): WardEvent[] {
+    const d = this.doctor;
+    d.dazed = CONFIG.run.stunned;
+    d.moving = false;
+    d.running = false;
+    return [{ kind: 'collide', x: (d.x + o.x) / 2, y: Math.min(d.y, o.y) - 26 }];
+  }
+
+  // Fed leeches on the floor are slippery: one chance to go over per leech stepped on —
+  // and at a run, no chance at all of keeping his feet.
   // (Public so the balance sim, which moves the doctor itself, can trip him too.)
-  checkFooting(): WardEvent[] {
+  checkFooting(run = false): WardEvent[] {
     const d = this.doctor;
     const r = CONFIG.slip.radius;
     const near = new Set(this.floor.filter((f) => Math.hypot(f.x - d.x, f.y - d.y) <= r).map((f) => f.id));
@@ -194,7 +211,7 @@ export class Ward {
     for (const id of near) {
       if (this.underfoot.has(id)) continue;
       this.underfoot.add(id);
-      if (this.rng.chance(CONFIG.slip.chance)) return this.slip(id);
+      if (this.rng.chance(run ? CONFIG.run.slipChance : CONFIG.slip.chance)) return this.slip(id);
     }
     return [];
   }
@@ -203,6 +220,7 @@ export class Ward {
     const d = this.doctor;
     d.dazed = CONFIG.slip.dazed;
     d.moving = false;
+    d.running = false;
     this.slips++;
     // the leech underfoot is squashed
     this.floor.splice(this.floor.findIndex((f) => f.id === id), 1);

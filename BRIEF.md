@@ -1,4 +1,4 @@
-# LEECH CLINIC — Ludum Dare 60 (brief, v2)
+# LEECHSIDE MANOR (working title: Leech Clinic) — Ludum Dare 60 (brief, v2)
 
 A sister game to **Thirty Leeches** (`../thirty-leeches`): same hospital, same year, same palette,
 same leeches — but where Thirty Leeches is a slow game about reading the rulebook and counting the

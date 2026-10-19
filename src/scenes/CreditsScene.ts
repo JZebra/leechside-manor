@@ -49,7 +49,7 @@ export class CreditsScene extends Phaser.Scene {
     panel(g, 90, 36, 1100, 648, 'paper1');
 
     text(this, 640, 66, 'Credits', { font: 'display', size: 46 }).setOrigin(0.5, 0);
-    text(this, 640, 130, 'Leech Clinic was developed for Ludum Dare 60 (“Old Tech”) by John Shen, using Claude AI.', { size: 21, italic: true, color: 'red1' }).setOrigin(0.5, 0);
+    text(this, 640, 130, 'Leechside Manor was developed for Ludum Dare 60 (“Old Tech”) by John Shen, using Claude AI.', { size: 21, italic: true, color: 'red1' }).setOrigin(0.5, 0);
 
     let y = 186;
     for (const s of SECTIONS) {

@@ -34,7 +34,7 @@ interface QueueView {
   name: Phaser.GameObjects.Text;
 }
 
-type Keys = Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT' | 'E' | 'SPACE', Phaser.Input.Keyboard.Key>;
+type Keys = Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT' | 'E' | 'SPACE' | 'SHIFT', Phaser.Input.Keyboard.Key>;
 
 export function lookOf(p: Patient): PatientLook {
   const pt = p.profile.portrait as { skin: string; hair: string; moustache: boolean };
@@ -205,7 +205,7 @@ export class WardScene extends Phaser.Scene {
 
   private bindKeys() {
     const kb = this.input.keyboard!;
-    this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E,SPACE') as Keys;
+    this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E,SPACE,SHIFT') as Keys;
     kb.addCapture('UP,DOWN,LEFT,RIGHT,SPACE');
     // E / Space / Enter act on the browser's keydown at once (Phaser would deliver it on the
     // next game step, and drops a tap whose keyup lands in the same frame).
@@ -273,7 +273,7 @@ export class WardScene extends Phaser.Scene {
       this.pumpSoundIn = 0;
       const ix = (k.D.isDown || k.RIGHT.isDown ? 1 : 0) - (k.A.isDown || k.LEFT.isDown ? 1 : 0);
       const iy = (k.S.isDown || k.DOWN.isDown ? 1 : 0) - (k.W.isDown || k.UP.isDown ? 1 : 0);
-      ward.walk(ix, iy, real);
+      events.push(...ward.walk(ix, iy, real, k.SHIFT.isDown));
     }
 
     events.push(...ward.tick(dt));
@@ -291,7 +291,7 @@ export class WardScene extends Phaser.Scene {
       this.stepIn -= real;
       if (this.stepIn <= 0) {
         sfx('footstep');
-        this.stepIn = ward.hand?.kind === 'stretcher' ? 0.42 : 0.3;
+        this.stepIn = (ward.hand?.kind === 'stretcher' ? 0.42 : 0.3) / (d.running ? 1.6 : 1);
       }
     } else this.stepIn = 0.08; // the first step lands just after he sets off
 
@@ -432,6 +432,11 @@ export class WardScene extends Phaser.Scene {
           sfx('slip');
           sfx('thud');
           this.say(`${SAY.slip}  ${e.fee} fr${e.spilled ? ` — ${e.spilled} spilled` : ''}`, ward.doctor.x, ward.doctor.y - 26, 'bad');
+          break;
+        case 'collide':
+          sfx('thud');
+          sfx('grunt');
+          this.say(SAY.collide, e.x, e.y, 'bad');
           break;
         case 'jostle':
           sfx('grunt', { minGap: 0.5 });
@@ -741,7 +746,7 @@ export class WardScene extends Phaser.Scene {
   private renderDoctor() {
     const ward = this.ward;
     const d = ward.doctor;
-    const step = d.moving ? Math.floor(this.t / 0.15) % 2 : 0;
+    const step = d.moving ? Math.floor(this.t / (d.running ? 0.09 : 0.15)) % 2 : 0;
     const depth = DEPTH.world + d.y;
     const down = d.dazed > 0;
     if (down) {

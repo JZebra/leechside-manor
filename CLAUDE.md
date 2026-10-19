@@ -1,4 +1,6 @@
-# Leech Clinic — Ludum Dare 60 ("Old Tech")
+# Leechside Manor — Ludum Dare 60 ("Old Tech")
+
+(Working name was Leech Clinic; the repo folder, package and storage keys still say so.)
 
 Overcooked-style single-player chaos in a leech ward: Broussais's house physician at the Val-de-Grâce
 bleeds soldiers with leeches, one day's shift (8:00 to the six o'clock bell) in each of three years
@@ -20,7 +22,7 @@ The design brief is `BRIEF.md`.
   think time, detours, slips and orderlies; prints francs, verdicts, faints, slips per day. Re-run after
   touching `src/config.ts`; the per-day verdict lines are set from the careful bot's spread.
 - `npm run build` — typecheck + static build to `dist/` (`base: './'` for itch.io)
-- `npm run zip` — `leech-clinic-itch.zip` with index.html at the root
+- `npm run zip` — `leechside-manor-itch.zip` with index.html at the root
 
 ## Layout
 - `src/config.ts` — **every gameplay number**: the years (`days[]`: year, ward, length, jar, delivery
@@ -60,6 +62,9 @@ The design brief is `BRIEF.md`.
 - Every carried thing has a home station (jar, cupboard, stove, stand, bucket, door) — no softlocks.
 - Targeting: stations are reached from their base (`use` rect), not their sprite; what the doctor faces
   wins ties; a runaway leech and a bed's need edge out furniture.
+- Running (Shift): ×`CONFIG.run.speed`; any fed leech underfoot is a certain slip; running into an
+  orderly is a 3 s stun (`collide`). Walking into one just stops you. `ward.walk()` returns slip and
+  collide events — the scene must pass them to `handle()`.
 - Seeded RNG streams (`makeRng(seed, 'ward')`) so `?seed=` reproduces a shift.
 - Every `localStorage` access is wrapped in try/catch.
 - Commit after each milestone; report what to playtest, what to tune, what to cut.

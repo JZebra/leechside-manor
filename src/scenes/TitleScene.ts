@@ -32,7 +32,9 @@ export class TitleScene extends Phaser.Scene {
 
     const x = 60 + pw + 50;
     const w = STAGE.w - x - 60;
-    text(this, x, 70, 'Leech Clinic', { font: 'display', size: 84, color: 'ink' });
+    // the name, as large as the column allows
+    const name = text(this, x, 70, 'Leechside Manor', { font: 'display', size: 84, color: 'ink' });
+    for (let size = 84; name.width > w && size > 40; size -= 4) name.setFontSize(size);
     text(this, x + 4, 166, 'Val-de-Grâce, Paris · three years under Broussais, 1828–1832', { size: 21, italic: true, color: 'red1' });
     text(this, x + 4, 210,
       'Broussais orders thirty leeches for every man, France buys them by the tens of millions, and you are his house physician. ' +
