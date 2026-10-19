@@ -33,6 +33,10 @@ The design brief is `BRIEF.md`.
 - `src/art/` — `palette.ts` (Thirty Leeches palette + additions), `pix.ts` (palette-locked buffer),
   `sprites.ts` (every sprite drawn procedurally and registered as a texture).
 - `src/audio/` — Thirty Leeches' sound system: file → filtered noise → jsfxr; `sounds.ts` lists them.
+  `music.ts`: looping tracks from `public/music/` (title: "Ancient Rite", ward: "Vanishing", Kevin
+  MacLeod, CC BY 4.0 — credit kept on the title page and in `CREDITS.md`), crossfaded per scene,
+  unlocked on the first key/click (all tracks primed then, for Safari), muted with M. Re-encode new
+  tracks to ~128 kbps MP3 (`ffmpeg -i in.mp3 -map 0:a -map_metadata 0 -b:a 128k out.mp3`).
 
 ## Rules
 - One art grid: `PIXEL = 3`. Textures are 1:1 Pix canvases shown at `setScale(3)`, positioned with

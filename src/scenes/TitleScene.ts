@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { hex } from '../art/palette';
 import { CONTROLS } from '../data/lines';
 import { sfx, isMuted, setMuted } from '../audio/audio';
+import { playMusic } from '../audio/music';
 import { fitCamera, text, panel, STAGE } from '../ui/view';
 import { loadProgress } from '../ui/progress';
 import { CONFIG } from '../config';
@@ -10,6 +11,8 @@ import { FLAGS } from '../flags';
 export const PLATE_CREDIT =
   'Title plate: the death of the emperor Galerius, eaten by worms. Boccaccio, Des cas des nobles hommes et femmes (De casibus virorum illustrium, trans. Laurent de Premierfait), Paris, 3rd quarter of the 15th century. BnF, Français 127, f. 258r. Source gallica.bnf.fr / BnF.';
 export const FONT_CREDIT = 'Type: IM Fell English (Igino Marini) and EB Garamond (Georg Duffner, Octavio Pardo), SIL Open Font License.';
+export const MUSIC_CREDIT =
+  'Music: “Ancient Rite” and “Vanishing”, Kevin MacLeod (incompetech.com). Licensed under Creative Commons: By Attribution 4.0 License, http://creativecommons.org/licenses/by/4.0/';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -18,6 +21,7 @@ export class TitleScene extends Phaser.Scene {
 
   create() {
     fitCamera(this);
+    playMusic('title');
     this.add.rectangle(0, 0, STAGE.w, STAGE.h, hex('paper1')).setOrigin(0);
     const g = this.add.graphics();
 
@@ -30,7 +34,8 @@ export class TitleScene extends Phaser.Scene {
       g.fillStyle(hex('ink')).fillRect(54, 54, pw + 12, ph + 12);
       this.add.image(60, 60, 'plate').setOrigin(0).setDisplaySize(pw, ph);
     }
-    text(this, 60, 668, '“Le ixe chapitre contient le cas de Galerius … empereur des Rommains.”', { size: 17, italic: true, color: 'wood3' });
+    text(this, 60, 666, '“Le ixe chapitre contient le cas de Galerius … empereur des Rommains.”', { size: 17, italic: true, color: 'wood3' });
+    text(this, 60, 690, MUSIC_CREDIT, { size: 11, color: 'paper4', wrap: pw });
 
     const x = 60 + pw + 50;
     const w = STAGE.w - x - 60;

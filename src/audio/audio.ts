@@ -4,6 +4,7 @@
 
 import { sfxr } from 'jsfxr';
 import { SOUNDS, SOUND_DEFAULTS, type NoiseSpec, type SoundName, type SoundSpec } from './sounds';
+import { setMusicMuted, unlockMusic } from './music';
 
 const MUTE_KEY = 'lc-muted';
 let muted = false;
@@ -12,6 +13,7 @@ try {
 } catch {
   /* storage unavailable */
 }
+setMusicMuted(muted);
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -132,8 +134,10 @@ export const isMuted = () => muted;
 // For diagnosis: the context and master bus (latency figures, in-graph timing).
 export const audioDebug = () => ({ ctx, master });
 
+// M mutes everything: sound effects and music.
 export function setMuted(m: boolean) {
   muted = m;
+  setMusicMuted(m);
   try {
     localStorage.setItem(MUTE_KEY, m ? '1' : '0');
   } catch {
@@ -181,6 +185,7 @@ function warm(c: AudioContext) {
 // Browsers only allow audio after a gesture: warm up on the first one.
 export function installAudioUnlock() {
   const unlock = () => {
+    unlockMusic(); // must run inside the gesture
     const c = context();
     if (c && c.state === 'suspended') c.resume().catch(() => {});
     if (c) {

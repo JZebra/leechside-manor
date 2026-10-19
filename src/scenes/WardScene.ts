@@ -10,6 +10,7 @@ import type { Patient } from '../model/patient';
 import { BED, WORLD, type Layout, type StationId, type Rect } from '../model/layout';
 import { STAGE_NOTES, VERB, FAIL, SAY, CONTROLS, type Note } from '../data/lines';
 import { sfx, isMuted, setMuted, audioDebug } from '../audio/audio';
+import { playMusic } from '../audio/music';
 import { FLAGS } from '../flags';
 import { fitCamera, text, sprite, place, panel, STAGE } from '../ui/view';
 
@@ -104,6 +105,7 @@ export class WardScene extends Phaser.Scene {
 
   create() {
     fitCamera(this);
+    playMusic('ward');
     const seed = FLAGS.seed ?? String(Date.now());
     this.ward = new Ward(seed, this.dayIndex);
     (window as unknown as { ward: Ward }).ward = this.ward;
