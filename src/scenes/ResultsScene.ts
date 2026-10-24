@@ -9,6 +9,7 @@ import type { Ward } from '../model/ward';
 import { sfx } from '../audio/audio';
 import { fitCamera, text, panel, STAGE } from '../ui/view';
 import { finishDay } from '../ui/progress';
+import { loadBoard, qualifies, signYear, signTotal, lastName, rememberName, today, ordinal, NAME_MAX } from '../ui/board';
 
 const OUTCOME_COLOUR: Record<string, PaletteKey> = {
   green: 'stamp0',
@@ -20,12 +21,17 @@ const OUTCOME_COLOUR: Record<string, PaletteKey> = {
 };
 
 export class ResultsScene extends Phaser.Scene {
+  private entering = false; // typing a name for the leaderboard: the other keys wait
+  private signedAt = -1e9;
+
   constructor() {
     super('results');
   }
 
   create(data: { ward: Ward }) {
     fitCamera(this);
+    this.entering = false;
+    this.signedAt = -1e9;
     const ward = data.ward;
     const shift = ward.shift;
     this.add.rectangle(0, 0, STAGE.w, STAGE.h, hex('ink')).setOrigin(0);
@@ -102,9 +108,11 @@ export class ResultsScene extends Phaser.Scene {
     });
 
     const next = last ? 'E / Space — the title page' : `E / Space — ${CONFIG.days[day + 1].title}`;
-    text(this, 100, 648, `${next}   ·   R — this day again   ·   T — title`, { font: 'display', size: 22, color: 'red2' });
+    const footer = text(this, 100, 648, `${next}   ·   R — this day again   ·   T — title`, { font: 'display', size: 22, color: 'red2' });
     const kb = this.input.keyboard!;
+    const idle = () => this.entering || this.time.now - this.signedAt < 300; // the Enter that signs mustn't also leave
     const go = () => {
+      if (idle()) return;
       sfx('page');
       if (last) this.scene.start('title');
       else this.scene.start('ward', { day: day + 1 });
@@ -113,8 +121,69 @@ export class ResultsScene extends Phaser.Scene {
       kb.on('keydown-E', go);
       kb.on('keydown-SPACE', go);
       kb.on('keydown-ENTER', go);
-      kb.on('keydown-R', () => this.scene.start('ward', { day }));
-      kb.on('keydown-T', () => this.scene.start('title'));
+      kb.on('keydown-R', () => !idle() && this.scene.start('ward', { day }));
+      kb.on('keydown-T', () => !idle() && this.scene.start('title'));
+    });
+
+    // the leaderboard: sign for this year's top ten, and for the three years if it was a full run
+    const board = loadBoard();
+    const year = shift.spec.year;
+    const fullRun = last && run.filter((x) => x != null).length === CONFIG.days.length;
+    const yearQ = qualifies(board.years[String(year)] ?? [], shift.money);
+    const totalQ = fullRun && qualifies(board.total, total);
+    if (yearQ || totalQ) this.signing(year, shift.money, verdict, totalQ ? total : null, footer);
+  }
+
+  // A place on the board: type a name (Enter signs, Esc leaves it unsigned).
+  private signing(year: number, money: number, verdict: string, total: number | null, footer: Phaser.GameObjects.Text) {
+    this.entering = true;
+    footer.setAlpha(0.35);
+    const g = this.add.graphics();
+    panel(g, 100, 566, 760, 66, 'paper0');
+    const what = total != null ? `this year and for the three years` : `the ${year} board`;
+    text(this, 118, 574, `A place on ${what}! Sign the register:`, { size: 18, italic: true, color: 'red1' });
+    const field = text(this, 118, 598, '', { font: 'display', size: 24, color: 'ink' });
+    const hint = text(this, 842, 604, 'Enter — sign   ·   Esc — leave it', { size: 15, italic: true, color: 'wood3' }).setOrigin(1, 0);
+    let name = lastName().slice(0, NAME_MAX);
+    let blink = true;
+    const draw = () => field.setText(`${name}${this.entering && blink ? '_' : ''}`);
+    draw();
+    const cursor = this.time.addEvent({ delay: 450, loop: true, callback: () => { blink = !blink; draw(); } });
+    const finish = (signed: boolean) => {
+      this.entering = false;
+      this.signedAt = this.time.now;
+      cursor.remove();
+      footer.setAlpha(1);
+      if (!signed) {
+        draw();
+        hint.setText('Left unsigned');
+        return;
+      }
+      const who = name.trim() || 'Anonymous';
+      rememberName(who);
+      const entry = { name: who, money, verdict, date: today() };
+      const at = signYear(year, entry);
+      const parts = at >= 0 ? [`${ordinal(at + 1)} for ${year}`] : [];
+      if (total != null) {
+        const t = signTotal({ ...entry, money: total, verdict: '' });
+        if (t >= 0) parts.push(`${ordinal(t + 1)} for the three years`);
+      }
+      name = who;
+      draw();
+      hint.setText(`Signed — ${parts.join(', ')}`).setColor('#2e4a2c');
+      sfx('scratch');
+    };
+    this.input.keyboard!.on('keydown', (e: KeyboardEvent) => {
+      if (!this.entering) return;
+      if (e.key === 'Enter') return finish(true);
+      if (e.key === 'Escape') return finish(false);
+      if (e.key === 'Backspace') name = name.slice(0, -1);
+      else if (e.key.length === 1 && /[\p{L}\p{N} .'-]/u.test(e.key) && name.length < NAME_MAX) {
+        name += e.key;
+        sfx('scratch', { vol: 0.4, minGap: 0.04 });
+      } else return;
+      blink = true;
+      draw();
     });
   }
 }

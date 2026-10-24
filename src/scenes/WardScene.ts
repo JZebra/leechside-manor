@@ -411,7 +411,7 @@ export class WardScene extends Phaser.Scene {
           this.sayAt(this.L.stations.bucket.box, `Salted ${e.count}`, 'info');
           break;
         case 'recycled':
-          sfx('clink');
+          sfx('delivery');
           this.sayAt(this.L.stations.jar.box, SAY.recycled(e.count), 'good');
           break;
         case 'escape':
@@ -429,7 +429,10 @@ export class WardScene extends Phaser.Scene {
           sfx('grab');
           break;
         case 'delivery':
+          // a few drops as her boy tips them in
           sfx('delivery');
+          this.time.delayedCall(110, () => sfx('delivery', { vol: 0.8 }));
+          this.time.delayedCall(260, () => sfx('delivery', { vol: 0.6 }));
           this.sayAt(this.L.stations.jar.box, SAY.delivery(e.count), 'good');
           break;
         case 'slip':

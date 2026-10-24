@@ -200,8 +200,8 @@ export class Ward {
     return [{ kind: 'collide', x: (d.x + o.x) / 2, y: Math.min(d.y, o.y) - 26 }];
   }
 
-  // Fed leeches on the floor are slippery: one chance to go over per leech stepped on —
-  // and at a run, no chance at all of keeping his feet.
+  // Fed leeches on the floor are slippery — but only at a run: walking, he picks his way
+  // round them; running, every one he steps on (as he steps on it) sends him flying.
   // (Public so the balance sim, which moves the doctor itself, can trip him too.)
   checkFooting(run = false): WardEvent[] {
     const d = this.doctor;
@@ -211,7 +211,7 @@ export class Ward {
     for (const id of near) {
       if (this.underfoot.has(id)) continue;
       this.underfoot.add(id);
-      if (this.rng.chance(run ? CONFIG.run.slipChance : CONFIG.slip.chance)) return this.slip(id);
+      if (run && this.rng.chance(CONFIG.run.slipChance)) return this.slip(id);
     }
     return [];
   }

@@ -70,7 +70,7 @@ export class TitleScene extends Phaser.Scene {
     const mute = text(this, x + w, 584, '', { size: 16, color: 'wood3', align: 'right' }).setOrigin(1, 0);
     const showMute = () => mute.setText(isMuted() ? 'Sound off (M)' : 'Sound on (M)');
     showMute();
-    text(this, x, 668, 'C — Credits', { font: 'display', size: 20, color: 'wood3' });
+    text(this, x, 668, 'L — Leaderboard   ·   C — Credits', { font: 'display', size: 20, color: 'wood3' });
     text(this, x + w, 668, 'Ludum Dare 60 · John Shen', { size: 15, italic: true, color: 'paper4' }).setOrigin(1, 0);
 
     const start = () => {
@@ -82,6 +82,10 @@ export class TitleScene extends Phaser.Scene {
     kb.on('keydown-E', start);
     kb.on('keydown-SPACE', start);
     kb.on('keydown-ENTER', start);
+    kb.on('keydown-L', () => {
+      sfx('page');
+      this.scene.start('board');
+    });
     kb.on('keydown-C', () => {
       sfx('page');
       this.scene.start('credits');

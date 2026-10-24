@@ -195,13 +195,13 @@ describe('the ward', () => {
     expect(later.stoveIn).toBe(true);
   });
 
-  it('stepping on fed leeches can floor him: dazed, the leech squashed, his handful scattered', () => {
+  it('running onto fed leeches floors him: dazed, the leech squashed, his handful scattered', () => {
     const w = new Ward('slip');
     at(w, 60, 160, 'side');
     for (let i = 0; i < 12; i++) w.floor.push({ id: 500 + i, x: 64 + i * 6, y: 160, angle: 0 });
     w.hand = { kind: 'leech', count: 2 };
     let slipped = false;
-    for (let i = 0; i < 40 && !slipped; i++) slipped = w.walk(1, 0, 0.05).some((e) => e.kind === 'slip');
+    for (let i = 0; i < 40 && !slipped; i++) slipped = w.walk(1, 0, 0.05, true).some((e) => e.kind === 'slip');
     expect(slipped).toBe(true);
     expect(w.doctor.dazed).toBe(CONFIG.slip.dazed);
     expect(w.hand).toBeNull();
@@ -213,6 +213,17 @@ describe('the ward', () => {
     expect(w.target()).toBeNull();
     for (let i = 0; i < CONFIG.slip.dazed * 10 + 1; i++) w.tick(0.1);
     expect(w.doctor.dazed).toBe(0);
+  });
+
+  it('walking over fed leeches never slips', () => {
+    const w = new Ward('walkover');
+    at(w, 40, 200, 'side');
+    for (let i = 0; i < 30; i++) w.floor.push({ id: 2000 + i, x: 44 + i * 4, y: 200, angle: 0 });
+    const ev: ReturnType<Ward['walk']> = [];
+    for (let i = 0; i < 60; i++) ev.push(...w.walk(1, 0, 0.05));
+    expect(ev.filter((e) => e.kind === 'slip')).toHaveLength(0);
+    expect(w.doctor.dazed).toBe(0);
+    expect(w.doctor.x).toBeGreaterThan(150); // walked straight over them all
   });
 
   it('running (Shift) is faster', () => {

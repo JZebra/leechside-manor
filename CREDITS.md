@@ -26,7 +26,7 @@ Recordings, all CC0 (public domain; credit not required, gladly given). Trimmed,
 re-encoded for the game; files in `public/sfx/`.
 
 - Doors (opening, closing) and cloth rustles: **Kenney**, *RPG Audio* — https://kenney.nl/assets/rpg-audio
-- Footsteps on stone: **Fantozzi** (via qubodup), *Fantozzi's Footsteps* — https://opengameart.org/content/fantozzis-footsteps-grasssand-stone
+- Footsteps on a hard floor: **Kenney**, *Impact Sounds* — https://kenney.nl/assets/impact-sounds
 - Slow heartbeat: **bart**, *Heartbeat sounds* — https://opengameart.org/content/heartbeat-sounds
 - Leech squelches and pops: **EZduzziteh**, *Squish Sounds Effects* — https://opengameart.org/content/squish-sounds-effects
 - Wet splats (scooping fed leeches, slipping on one): **Independent.nu** (via qubodup), *8 wet squish, slurp impacts* — https://opengameart.org/node/2547

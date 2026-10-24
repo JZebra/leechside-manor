@@ -8,7 +8,8 @@ A frantic, darkly funny time-management game in the Overcooked mould, made for *
 
 Bleed each soldier just enough — into the green — then press lint on the bites. Carry out the
 fainted, salt the fed leeches so they can be used again, keep the hungry ones out of the drain, and
-mind your footing: fed leeches are slippery. Three years, three shifts — and then the cholera comes.
+don't run over the fed ones on the floor. Three years, three shifts — and then the cholera comes.
+Sign the register if your takings make the top ten.
 
 ## The three years
 
@@ -30,7 +31,7 @@ bleeding failed and leeching began its long decline.
 | E / Space | take, give, apply; hold to pump the bdellometer |
 | Esc | pause |
 | M | mute |
-| C (title page) | credits |
+| L / C (title page) | leaderboard / credits |
 
 ## Running it
 
@@ -56,8 +57,8 @@ palette-locked pixel buffer (`src/art/`).
 
 - **Music:** "Ancient Rite" and "Vanishing", Kevin MacLeod (incompetech.com). Licensed under Creative
   Commons: By Attribution 4.0 License — http://creativecommons.org/licenses/by/4.0/
-- **Sound effects (CC0):** Kenney (RPG Audio), Fantozzi, bart, EZduzziteh, Independent.nu, sinny and
-  TinyWorlds, via kenney.nl and OpenGameArt — details in [CREDITS.md](CREDITS.md)
+- **Sound effects (CC0):** Kenney (RPG Audio, Impact Sounds), bart, EZduzziteh, Independent.nu, sinny
+  and TinyWorlds, via kenney.nl and OpenGameArt — details in [CREDITS.md](CREDITS.md)
 - **Title plate:** the death of the emperor Galerius, eaten by worms. Boccaccio, *Des cas des nobles
   hommes et femmes*, Paris, 3rd quarter of the 15th century. BnF, Français 127, f. 258r.
   Source gallica.bnf.fr / BnF

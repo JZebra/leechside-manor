@@ -39,7 +39,10 @@ The design brief is `BRIEF.md`.
   `layout.ts` (the two floor plans in art px: beds, stations with sprite box / footprint / reach rect,
   orderly routes).
 - `src/scenes/` — Phaser: Boot (textures), Title (BnF Fr. 127 miniature: Galerius eaten by worms; year
-  select; C for credits), Ward (input → model → drawing), Results, Credits.
+  select; L leaderboard, C credits), Ward (input → model → drawing), Results (signing the register),
+  Board (the leaderboard), Credits.
+- `src/ui/board.ts` — the leaderboard: top 10 per year and for full three-year runs, in localStorage
+  (`lc-board`, last name in `lc-name`); local to the browser, not online.
 - `src/art/` — `palette.ts` (Thirty Leeches palette + additions), `pix.ts` (palette-locked buffer),
   `sprites.ts` (every sprite drawn procedurally and registered as a texture).
 - `src/audio/` — Thirty Leeches' sound system: file → filtered noise → jsfxr; `sounds.ts` lists them.
@@ -62,8 +65,9 @@ The design brief is `BRIEF.md`.
 - Every carried thing has a home station (jar, cupboard, stove, stand, bucket, door) — no softlocks.
 - Targeting: stations are reached from their base (`use` rect), not their sprite; what the doctor faces
   wins ties; a runaway leech and a bed's need edge out furniture.
-- Running (Shift): ×`CONFIG.run.speed`; any fed leech underfoot is a certain slip; running into an
-  orderly is a 3 s stun (`collide`). Walking into one just stops you. `ward.walk()` returns slip and
+- Slips happen only at a run (Shift, ×`CONFIG.run.speed`): any fed leech underfoot is a certain slip;
+  walking over them is safe. Running into an orderly is a 3 s stun (`collide`); walking into one just
+  stops you. `ward.walk()` returns slip and
   collide events — the scene must pass them to `handle()`.
 - Seeded RNG streams (`makeRng(seed, 'ward')`) so `?seed=` reproduces a shift.
 - Every `localStorage` access is wrapped in try/catch.

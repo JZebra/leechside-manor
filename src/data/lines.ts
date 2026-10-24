@@ -17,7 +17,7 @@ export const STAGE_NOTES: Record<StageId, Note> = {
     body: [
       '“Thirty leeches, gentlemen, and lint when they drop. Every fever is an inflamed gut; bleed the gut and the fever goes.”',
     ],
-    hint: 'Take leeches from Madame Ricard’s jar (up to three; E with a full hand puts them back) and set them on a man. The bar under his bed fills as he bleeds: press lint from the cupboard on him in the GREEN. Fed leeches drop to the floor — slippery underfoot! Sweep them into the salt bucket and they go back in the jar.',
+    hint: 'Take leeches from Madame Ricard’s jar (up to three; E with a full hand puts them back) and set them on a man. The bar under his bed fills as he bleeds: press lint from the cupboard on him in the GREEN. Fed leeches drop to the floor — don’t run over them! Sweep them into the salt bucket and they go back in the jar.',
   },
   frail: {
     speaker: 'Sister Marthe',

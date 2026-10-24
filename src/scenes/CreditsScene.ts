@@ -18,8 +18,8 @@ const SECTIONS: { head: string; lines: string[] }[] = [
     head: 'Sound effects',
     lines: [
       'All public domain (Creative Commons CC0); credit gladly given.',
-      'Doors and cloth: Kenney, RPG Audio (kenney.nl)',
-      'Footsteps on stone: Fantozzi · Wet splats: Independent.nu — both via qubodup, OpenGameArt',
+      'Doors, cloth and footsteps: Kenney, RPG Audio and Impact Sounds (kenney.nl)',
+      'Wet splats: Independent.nu, via qubodup — OpenGameArt',
       'Slow heartbeat: bart · Squelches and pops: EZduzziteh · Scissors: sinny · Boiling water: TinyWorlds — OpenGameArt',
       'Everything else synthesised in the browser with filtered noise and jsfxr.',
     ],

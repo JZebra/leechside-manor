@@ -7,8 +7,8 @@
 // vary: random playback-rate spread so repeats don't sound mechanical.
 // vol: a level for the recording (files are peak-normalised; this sets their place in the mix).
 //
-// Recordings in public/sfx/ are CC0 (credits in CREDITS.md): Kenney (doors, cloth), Fantozzi
-// (stone footsteps), bart (heartbeat), EZduzziteh (squishes), Independent.nu (wet splats),
+// Recordings in public/sfx/ are CC0 (credits in CREDITS.md): Kenney (doors, cloth, hard-floor
+// footsteps), bart (heartbeat), EZduzziteh (squishes), Independent.nu (wet splats),
 // sinny (scissors), TinyWorlds (boiling water) — all via OpenGameArt or kenney.nl.
 
 export interface NoiseSpec {
@@ -70,8 +70,9 @@ export const SOUNDS = {
   ding: { def: { wave_type: 2, p_env_sustain: 0.05, p_env_decay: 0.36, p_env_punch: 0.3, p_base_freq: 0.52, p_arp_mod: 0.3, p_arp_speed: 0.55, sound_vol: 0.22 }, vary: 0 },
   // coins in the box
   coin: { def: { wave_type: 0, p_env_sustain: 0.04, p_env_decay: 0.28, p_env_punch: 0.4, p_base_freq: 0.6, p_arp_mod: 0.42, p_arp_speed: 0.6, p_duty: 0.4, p_lpf_freq: 0.6, sound_vol: 0.16 }, vary: 0.04 },
-  // a jar of fresh leeches set down
-  delivery: { def: { wave_type: 3, p_env_sustain: 0.08, p_env_decay: 0.36, p_env_punch: 0.4, p_base_freq: 0.12, p_lpf_freq: 0.28, sound_vol: 0.36 }, vary: 0.05 },
+  // leeches back in the jar (a delivery, or salted ones recovered): a drop into the water —
+  // a sine whose pitch leaps up as it dies, the 'plink' of a drip
+  delivery: { def: { wave_type: 2, p_env_attack: 0, p_env_sustain: 0.02, p_env_decay: 0.16, p_env_punch: 0.15, p_base_freq: 0.34, p_freq_ramp: 0.42, p_lpf_freq: 0.9, sound_vol: 0.32 }, vary: 0.12 },
   // a leech slipping over the jar's rim
   slither: { noise: { dur: 0.4, attack: 0.1, band: [700, 1600, 900], q: 2.2, vol: 0.4, am: { rate: 7, depth: 0.7 } }, vary: 0.1 },
   // a stretcher's poles knocking the bedframe
@@ -83,7 +84,7 @@ export const SOUNDS = {
   // a man leaving: the ward door shutting behind him
   doorClose: { file: sfx('door-close-1', 'door-close-2'), vol: 0.45, def: { wave_type: 3, p_env_sustain: 0.05, p_env_decay: 0.3, p_env_punch: 0.45, p_base_freq: 0.07, p_lpf_freq: 0.22, sound_vol: 0.3 }, vary: 0.08 },
   // the doctor's boots on the flagstones
-  footstep: { file: sfx('step-L1', 'step-L2', 'step-L3', 'step-R1', 'step-R2', 'step-R3'), vol: 0.11, noise: { dur: 0.08, attack: 0.003, band: [500, 300, 200], q: 0.8, vol: 0.25 }, vary: 0.08 },
+  footstep: { file: sfx('step-tile-1', 'step-tile-2', 'step-tile-3', 'step-tile-4', 'step-tile-5'), vol: 0.12, noise: { dur: 0.08, attack: 0.003, band: [500, 300, 200], q: 0.8, vol: 0.25 }, vary: 0.08 },
   // a slow, failing heartbeat: a man in the blue
   heartbeat: { file: sfx('heartbeat'), vol: 0.6, def: { wave_type: 2, p_env_sustain: 0.05, p_env_decay: 0.2, p_env_punch: 0.4, p_base_freq: 0.1, p_lpf_freq: 0.2, sound_vol: 0.4 }, vary: 0 },
   // an escaped leech climbing onto a man

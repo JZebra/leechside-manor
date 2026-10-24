@@ -54,7 +54,7 @@ export const CONFIG = {
         { id: 'frail', at: 12 * 60 },
         { id: 'chill', at: 15 * 60 }, // the night watch in from the frost; the stove brought up
       ],
-      verdict: { approved: 115, noted: 65 },
+      verdict: { approved: 125, noted: 70 },
     },
     {
       year: 1831,
@@ -80,7 +80,7 @@ export const CONFIG = {
       when: 'an April morning, 1832',
       ward: 'saintLouis',
       realSeconds: 230,
-      jar: 18,
+      jar: 10, // a thin jar: the bdellometer has to carry the day
       deliveries: null, // every hospital in Paris is bleeding the cholera: none to be had
       escapes: true,
       orderlies: true,
@@ -157,8 +157,7 @@ export const CONFIG = {
   },
 
   slip: {
-    chance: 0.25, // per fed leech stepped on while walking
-    radius: 3, // art px from the doctor's feet
+    radius: 3, // art px from the doctor's feet (slips only happen at a run: see run.slipChance)
     dazed: 3, // seconds on the floor
   },
 
@@ -184,7 +183,7 @@ export const CONFIG = {
     speed: 78, // art px per second
     carrying: 0.55, // speed multiplier while carrying a fainted man
     reach: 14, // art px from the doctor's feet to a bed, or to a station's base
-    pickReach: 12, // art px to a leech on the floor
+    pickReach: 20, // art px to a leech on the floor: generous, so he needn't tread near one to pick it up
     handful: 3, // hungry leeches carried at once
     scoop: 5, // fed leeches carried in one handful
     calmRange: 26, // art px: a nervous man is calmed while the doctor is this close
