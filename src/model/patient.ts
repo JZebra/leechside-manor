@@ -30,6 +30,7 @@ export interface Profile {
 }
 
 export class Patient {
+  readonly id: number; // unique within the day (the network sends a man's record once)
   readonly type: PatientType;
   readonly profile: Profile;
   state: PatientState = 'waiting';
@@ -42,9 +43,11 @@ export class Patient {
   panic = 0;
   faintCause: FaintCause | null = null;
   outcome: 'green' | 'early' | 'late' | 'faint' | 'walkedOut' | null = null;
+  by: number | null = null; // the doctor who last bled him (for the report's credits)
   private lastZone: Zone = 'red';
 
-  constructor(type: PatientType, profile: Profile, cold = false) {
+  constructor(type: PatientType, profile: Profile, cold = false, id = 0) {
+    this.id = id;
     this.type = type;
     this.profile = profile;
     this.cold = cold;

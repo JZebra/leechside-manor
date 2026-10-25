@@ -7,6 +7,9 @@
 //     [jar] [cupb] [stove] [salt]           [jar] [cupb] [stove] [salt]
 //            bed bed   [bdellometer]    ⟵ orderlies ⟵ bed bed bed  [bdellometer]
 //                               drain                                  drain
+//
+// Grande Salle (playing together): half as big again each way, six beds along each wall,
+// one of each station spread down the middle so the doctors cross each other's paths.
 
 import type { WardId } from '../config';
 import { WARD_NAME } from '../data/lines';
@@ -25,17 +28,19 @@ export interface Station {
 export interface Layout {
   id: WardId;
   name: string;
+  world: { w: number; h: number; wall: number }; // the room in art px (the camera fits it to the screen)
   beds: Point[]; // top-left corners
   stations: Record<StationId, Station>;
   drain: Point;
   jarRim: Point;
   windows: number[];
   walk: { x0: number; y0: number; x1: number; y1: number }; // where the doctor's feet may go
-  doctorStart: Point;
+  starts: Point[]; // where each doctor begins, one per player
   routes: Point[][]; // orderlies walk these, end to end
 }
 
-export const WORLD = { w: 426, h: 240, wall: 24 };
+export const WORLD = { w: 426, h: 240, wall: 24 }; // the one-doctor wards: the stage at PIXEL×
+const GRAND = { w: 640, h: 360, wall: 24 }; // the stage at two-thirds of PIXEL×
 export const BED = { w: 26, h: 42 };
 // The doctor can't stand right against a bed's foot: with this margin his head stays
 // below the patient's chest, so the leeches on it are never hidden behind him.
@@ -59,6 +64,7 @@ export const LAYOUTS: Record<WardId, Layout> = {
   saintCome: {
     id: 'saintCome',
     name: WARD_NAME.saintCome,
+    world: WORLD,
     beds: [
       { x: 137, y: 28 },
       { x: 197, y: 28 },
@@ -71,12 +77,13 @@ export const LAYOUTS: Record<WardId, Layout> = {
     jarRim: { x: 110, y: 104 },
     windows: [86, 302],
     walk: { x0: 6, y0: 34, x1: 420, y1: 236 },
-    doctorStart: { x: 120, y: 88 },
+    starts: [{ x: 120, y: 88 }, { x: 330, y: 88 }, { x: 120, y: 150 }, { x: 330, y: 150 }],
     routes: [],
   },
   saintLouis: {
     id: 'saintLouis',
     name: WARD_NAME.saintLouis,
+    world: WORLD,
     beds: [
       { x: 112, y: 28 },
       { x: 170, y: 28 },
@@ -91,11 +98,37 @@ export const LAYOUTS: Record<WardId, Layout> = {
     jarRim: { x: 110, y: 104 },
     windows: [350, 386],
     walk: { x0: 6, y0: 34, x1: 420, y1: 236 },
-    doctorStart: { x: 88, y: 122 }, // clear of the orderlies' aisles
+    starts: [{ x: 88, y: 122 }, { x: 360, y: 122 }, { x: 60, y: 200 }, { x: 380, y: 200 }], // clear of the orderlies' aisles
     // the top aisle runs left to right; the other route sweeps the lower aisle right to left
     routes: [
       [{ x: -12, y: 91 }, { x: 438, y: 91 }],
       [{ x: 438, y: 147 }, { x: -12, y: 147 }],
+    ],
+  },
+  grandeSalle: {
+    id: 'grandeSalle',
+    name: WARD_NAME.grandeSalle,
+    world: GRAND,
+    beds: [
+      ...[0, 1, 2, 3, 4, 5].map((i) => ({ x: 120 + i * 70, y: 28 })),
+      ...[0, 1, 2, 3, 4, 5].map((i) => ({ x: 155 + i * 70, y: 270 })),
+    ],
+    stations: {
+      jar: station({ x: 150, y: 150, w: 24, h: 30 }, 14, 'jar'),
+      cupboard: station({ x: 262, y: 152, w: 28, h: 26 }, 14, 'cupboard'),
+      stove: station({ x: 378, y: 150, w: 28, h: 30 }, 14, 'stove:0'),
+      bucket: station({ x: 494, y: 160, w: 20, h: 18 }, 10, 'bucket'),
+      door: ISLAND.door,
+      stand: station({ x: 590, y: 282, w: 24, h: 28 }, 12, 'stand:empty'),
+    },
+    drain: { x: 614, y: 348 },
+    jarRim: { x: 162, y: 154 },
+    windows: [540, 590],
+    walk: { x0: 6, y0: 34, x1: 634, y1: 356 },
+    starts: [{ x: 104, y: 140 }, { x: 560, y: 140 }, { x: 104, y: 236 }, { x: 560, y: 236 }],
+    routes: [
+      [{ x: -12, y: 112 }, { x: 652, y: 112 }],
+      [{ x: 652, y: 228 }, { x: -12, y: 228 }],
     ],
   },
 };

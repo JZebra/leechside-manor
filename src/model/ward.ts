@@ -1,8 +1,9 @@
-// The whole ward as pure state: the doctor, what he carries, the beds and the
+// The whole ward as pure state: the doctors, what each carries, the beds and the
 // queue, leeches on the floor, the salt bucket, the jar, the orderlies and the clock.
-// The Phaser scene feeds it input and draws it; tests and bots drive it directly.
+// The Phaser scene feeds it input and draws it; tests, bots and the multiplayer server
+// drive it directly. One doctor alone, or up to four sharing the Grande Salle.
 
-import { CONFIG, type PatientType, type StageId } from '../config';
+import { CONFIG, type PatientType, type StageId, type WardId } from '../config';
 import { Patient, type FaintCause, type Profile } from './patient';
 import { Shift } from './shift';
 import { Supply } from './supply';
@@ -39,6 +40,7 @@ export interface Bed {
 }
 
 export interface Queued {
+  id: number;
   type: PatientType;
   profile: Profile;
   cold: boolean;
@@ -54,11 +56,38 @@ export interface Orderly {
   y: number;
   route: Point[];
   leg: number; // index of the point he is walking towards
-  waited: number; // seconds held up by the doctor
+  waited: number; // seconds held up by a doctor
   facing: 'side' | 'up' | 'down';
   flip: boolean;
   moving: boolean;
   load: number; // what he carries (drawing only)
+}
+
+export type Facing = 'down' | 'up' | 'side';
+
+// What the report credits to each doctor.
+export interface DoctorStats {
+  green: number; // men bandaged in the green
+  faints: number; // men who fainted after he last bled them
+  applied: number; // leeches he set on
+  squashed: number; // fed leeches he slipped on
+  knocked: number; // colleagues he ran into
+  carried: number; // fainted men he carried out
+}
+
+export interface Doctor {
+  id: number; // 0–3: his coat colour, his place in the report
+  x: number;
+  y: number;
+  facing: Facing;
+  flip: boolean;
+  moving: boolean;
+  running: boolean;
+  dazed: number; // seconds left on the floor
+  hand: Hand;
+  pumping: number | null; // the bed he is pumping this frame (set by pump(), kept until the next tick)
+  pumped: number | null; // …and the one he pumped last frame, for drawing
+  stats: DoctorStats;
 }
 
 export type WardEvent =
@@ -66,54 +95,58 @@ export type WardEvent =
   | { kind: 'bell' }
   | { kind: 'arrive'; bed: number }
   | { kind: 'gaveUp'; bed: number | null; fee: number }
-  | { kind: 'take'; what: string }
-  | { kind: 'putBack'; what: string }
-  | { kind: 'attach'; bed: number; slot: number; wild: boolean }
-  | { kind: 'fail'; fail: Fail; target: Target | null }
-  | { kind: 'warm'; bed: number }
+  | { kind: 'take'; what: string; who: number }
+  | { kind: 'putBack'; what: string; who: number }
+  | { kind: 'attach'; bed: number; slot: number; wild: boolean; who: number | null }
+  | { kind: 'fail'; fail: Fail; target: Target | null; who: number }
+  | { kind: 'warm'; bed: number; who: number }
   | { kind: 'leechDone'; bed: number; slot: number }
   | { kind: 'ready'; bed: number }
   | { kind: 'warning'; bed: number }
   | { kind: 'faint'; bed: number; cause: FaintCause; fee: number }
-  | { kind: 'bandage'; bed: number; outcome: 'green' | 'early' | 'late'; fee: number }
-  | { kind: 'lift'; bed: number }
-  | { kind: 'deliver' }
-  | { kind: 'scoop'; count: number }
-  | { kind: 'salt'; count: number }
+  | { kind: 'bandage'; bed: number; outcome: 'green' | 'early' | 'late'; fee: number; who: number }
+  | { kind: 'lift'; bed: number; who: number }
+  | { kind: 'deliver'; who: number }
+  | { kind: 'scoop'; count: number; who: number }
+  | { kind: 'salt'; count: number; who: number }
   | { kind: 'recycled'; count: number }
   | { kind: 'escape'; id: number }
   | { kind: 'latch'; bed: number }
   | { kind: 'drain'; fee: number }
-  | { kind: 'catch' }
+  | { kind: 'catch'; who: number }
   | { kind: 'delivery'; count: number }
   | { kind: 'deviceArrives' }
   | { kind: 'stoveArrives' }
-  | { kind: 'slip'; fee: number; spilled: number }
+  | { kind: 'slip'; fee: number; spilled: number; who: number }
   | { kind: 'jostle'; x: number; y: number }
-  | { kind: 'collide'; x: number; y: number }; // ran into an orderly
+  | { kind: 'collide'; x: number; y: number; who: number } // ran into an orderly
+  | { kind: 'knock'; x: number; y: number; who: number; other: number }; // ran into a colleague
 
-export type Facing = 'down' | 'up' | 'side';
+export interface WardOptions {
+  doctors?: number; // 1–4
+  ward?: WardId; // the floor plan, if not the day's own
+}
 
-// The doctor's (and an orderly's) feet, for collisions.
+// A doctor's (and an orderly's) feet, for collisions.
 const footOf = (x: number, y: number): Rect => ({ x: x - 4, y: y - 3, w: 8, h: 3 });
 // An orderly with his basket takes up more of the aisle.
 const bulkOf = (o: { x: number; y: number }): Rect => ({ x: o.x - 8, y: o.y - 6, w: 16, h: 7 });
+
+type Hit = { orderly: Orderly } | { doctor: Doctor };
 
 export class Ward {
   readonly shift: Shift;
   readonly layout: Layout;
   readonly supply: Supply;
   readonly beds: Bed[];
+  readonly doctors: Doctor[];
   readonly queue: Queued[] = [];
   readonly floor: FloorLeech[] = [];
   readonly escapees: Escapee[] = [];
   readonly salting: Salting[] = [];
   readonly orderlies: Orderly[] = [];
-  readonly doctor: { x: number; y: number; facing: Facing; flip: boolean; moving: boolean; running: boolean; dazed: number };
-  hand: Hand = null;
   deviceOnStand = false; // the bdellometer arrives with a 'machine' stage
   stoveIn = false; // the stove (for hot-water bottles) arrives with a 'stove' stage
-  pumping: number | null = null; // bed being pumped this frame
   applied = 0; // leeches set on patients, for Broussais's arithmetic
   lost = 0; // leeches down the drain or squashed
   slips = 0;
@@ -122,21 +155,46 @@ export class Ward {
   private escapeIn: number = CONFIG.leech.escape.every;
   private orderlyIn = 3;
   private nextRoute = 0;
-  private underfoot = new Set<number>(); // floor leeches the doctor is standing on (one roll each)
+  private readonly underfoot: Set<number>[]; // per doctor: floor leeches he is standing on (one roll each)
   private readonly rng: Rng;
   private readonly walls: Rect[];
 
-  constructor(seed: string, day = 0) {
-    this.shift = new Shift(seed, day);
-    this.layout = LAYOUTS[this.shift.spec.ward];
-    this.supply = new Supply(this.shift.spec.jar, this.shift.spec.deliveries);
+  constructor(seed: string, day = 0, opts: WardOptions = {}) {
+    const n = Math.max(1, Math.min(CONFIG.multi.maxPlayers, opts.doctors ?? 1));
+    const scale = (k: readonly number[]) => k[n - 1];
+    this.shift = new Shift(seed, day, scale(CONFIG.multi.rate));
+    const spec = this.shift.spec;
+    this.layout = LAYOUTS[opts.ward ?? spec.ward];
+    const j = scale(CONFIG.multi.jar);
+    const schedule = spec.deliveries && { every: spec.deliveries.every, size: Math.round(spec.deliveries.size * j) };
+    this.supply = new Supply(Math.round(spec.jar * j), schedule, Math.round(CONFIG.supply.cap * j));
     this.rng = makeRng(seed, 'ward', day);
     // the stove isn't in the ward until a 'stove' stage brings it: it blocks the way only then
     const stoveFoot = this.layout.stations.stove.foot;
     this.walls = obstaclesOf(this.layout).filter((r) => r !== stoveFoot);
     this.beds = this.layout.beds.map((_, index) => ({ index, patient: null, bites: [], freeIn: 0, leaving: 0 }));
-    const s = this.layout.doctorStart;
-    this.doctor = { x: s.x, y: s.y, facing: 'down', flip: false, moving: false, running: false, dazed: 0 };
+    this.doctors = Array.from({ length: n }, (_, id) => {
+      const s = this.layout.starts[id];
+      return {
+        id, x: s.x, y: s.y, facing: 'down' as Facing, flip: false, moving: false, running: false, dazed: 0,
+        hand: null, pumping: null, pumped: null,
+        stats: { green: 0, faints: 0, applied: 0, squashed: 0, knocked: 0, carried: 0 },
+      };
+    });
+    this.underfoot = this.doctors.map(() => new Set<number>());
+  }
+
+  // The first doctor: the only one when playing alone.
+  get doctor(): Doctor {
+    return this.doctors[0];
+  }
+
+  get hand(): Hand {
+    return this.doctors[0].hand;
+  }
+
+  set hand(h: Hand) {
+    this.doctors[0].hand = h;
   }
 
   get over() {
@@ -154,107 +212,169 @@ export class Ward {
   // ── Movement ──────────────────────────────────────────────────────────────
 
   // run: Shift held. Faster, but no care for what's underfoot or who's in the way.
-  walk(ix: number, iy: number, dt: number, run = false): WardEvent[] {
-    const d = this.doctor;
+  walk(ix: number, iy: number, dt: number, run = false, who = 0): WardEvent[] {
+    const d = this.doctors[who];
     const len = Math.hypot(ix, iy);
     d.moving = len > 0 && d.dazed <= 0;
     d.running = d.moving && run;
     if (!d.moving) return [];
+    this.face(d, ix, iy);
+    const speed = CONFIG.doctor.speed * (d.hand?.kind === 'stretcher' ? CONFIG.doctor.carrying : 1) * (run ? CONFIG.run.speed : 1);
+    const step = (speed * dt) / len;
+    return this.stepBy(d, ix * step, iy * step, run);
+  }
+
+  // Move a doctor to where his player's own screen has him (playing online: each player
+  // moves his doctor at once, and the server follows). The same walls, colleagues and
+  // leeches underfoot apply, so the server decides any slip or collision.
+  // (ix, iy) is the way he's pushing: his own screen stops him at a colleague's shoulder,
+  // so a run that ends there still knocks them both down.
+  walkTo(who: number, x: number, y: number, run: boolean, facing: Facing, flip: boolean, ix = 0, iy = 0): WardEvent[] {
+    const d = this.doctors[who];
+    if (d.dazed > 0) {
+      d.moving = d.running = false;
+      return [];
+    }
+    d.facing = facing;
+    d.flip = flip;
+    const dx = x - d.x;
+    const dy = y - d.y;
+    const pushing = ix !== 0 || iy !== 0;
+    d.moving = pushing || Math.hypot(dx, dy) > 0.01;
+    d.running = d.moving && run;
+    if (!d.moving) return [];
+    const events = this.stepBy(d, dx, dy, run);
+    if (events.length || !run || !pushing) return events;
+    const hit = this.blocked(footOf(d.x + Math.sign(ix) * 1.5, d.y + Math.sign(iy) * 1.5), d);
+    if (hit && hit !== 'wall') return 'orderly' in hit ? this.collide(d, hit.orderly) : this.knock(d, hit.doctor);
+    return events;
+  }
+
+  // Move a doctor on his own player's screen, ahead of the server: walls and colleagues
+  // stop him, but slips and collisions are the server's to decide (walkTo).
+  glide(ix: number, iy: number, dt: number, run: boolean, who: number) {
+    const d = this.doctors[who];
+    const len = Math.hypot(ix, iy);
+    d.moving = len > 0 && d.dazed <= 0;
+    d.running = d.moving && run;
+    if (!d.moving) return;
+    this.face(d, ix, iy);
+    const speed = CONFIG.doctor.speed * (d.hand?.kind === 'stretcher' ? CONFIG.doctor.carrying : 1) * (run ? CONFIG.run.speed : 1);
+    const step = (speed * dt) / len;
+    if (!this.moveAxis(d, ix * step, 0)) this.moveAxis(d, 0, iy * step);
+  }
+
+  private face(d: Doctor, ix: number, iy: number) {
     if (Math.abs(ix) > Math.abs(iy)) {
       d.facing = 'side';
       d.flip = ix < 0;
     } else d.facing = iy < 0 ? 'up' : 'down';
-    const speed = CONFIG.doctor.speed * (this.hand?.kind === 'stretcher' ? CONFIG.doctor.carrying : 1) * (run ? CONFIG.run.speed : 1);
-    const step = (speed * dt) / len;
-    const hit = this.moveAxis(ix * step, 0) ?? this.moveAxis(0, iy * step);
-    if (hit && run) return this.collide(hit);
-    return this.checkFooting(run);
   }
 
-  private blocked(r: Rect): boolean {
+  private stepBy(d: Doctor, dx: number, dy: number, run: boolean): WardEvent[] {
+    const hit = this.moveAxis(d, dx, 0) ?? this.moveAxis(d, 0, dy);
+    if (hit && run) return 'orderly' in hit ? this.collide(d, hit.orderly) : this.knock(d, hit.doctor);
+    return this.checkFooting(run, d.id);
+  }
+
+  private blocked(r: Rect, self: Doctor): Hit | 'wall' | null {
     const stove = this.stoveIn ? this.layout.stations.stove.foot : null;
-    return this.walls.some((o) => overlaps(r, o)) || (!!stove && overlaps(r, stove)) || this.orderlies.some((o) => overlaps(r, bulkOf(o)));
+    if (this.walls.some((o) => overlaps(r, o)) || (!!stove && overlaps(r, stove))) return 'wall';
+    const orderly = this.orderlies.find((o) => overlaps(r, bulkOf(o)));
+    if (orderly) return { orderly };
+    const doctor = this.doctors.find((o) => o !== self && overlaps(r, footOf(o.x, o.y)));
+    return doctor ? { doctor } : null;
   }
 
-  // Move along one axis if the way is clear. Returns the orderly in the way, if that's what stopped him.
-  private moveAxis(dx: number, dy: number): Orderly | null {
-    const d = this.doctor;
+  // Move along one axis if the way is clear. Returns the orderly or colleague in the way,
+  // if that's what stopped him.
+  private moveAxis(d: Doctor, dx: number, dy: number): Hit | null {
     const w = this.layout.walk;
     const nx = Math.min(w.x1, Math.max(w.x0, d.x + dx));
     const ny = Math.min(w.y1, Math.max(w.y0, d.y + dy));
-    const foot = footOf(nx, ny);
-    if (!this.blocked(foot)) {
+    const hit = this.blocked(footOf(nx, ny), d);
+    if (!hit) {
       d.x = nx;
       d.y = ny;
       return null;
     }
-    return this.orderlies.find((o) => overlaps(foot, bulkOf(o))) ?? null;
+    return hit === 'wall' ? null : hit;
+  }
+
+  private fall(d: Doctor, seconds: number) {
+    d.dazed = Math.max(d.dazed, seconds);
+    d.moving = false;
+    d.running = false;
+    d.pumping = null;
   }
 
   // Running full tilt into an orderly: down he goes.
-  private collide(o: Orderly): WardEvent[] {
-    const d = this.doctor;
-    d.dazed = CONFIG.run.stunned;
-    d.moving = false;
-    d.running = false;
-    return [{ kind: 'collide', x: (d.x + o.x) / 2, y: Math.min(d.y, o.y) - 26 }];
+  private collide(d: Doctor, o: Orderly): WardEvent[] {
+    this.fall(d, CONFIG.run.stunned);
+    return [{ kind: 'collide', x: (d.x + o.x) / 2, y: Math.min(d.y, o.y) - 26, who: d.id }];
+  }
+
+  // …or into a colleague: down they both go, the one who ran the longer.
+  private knock(d: Doctor, other: Doctor): WardEvent[] {
+    this.fall(d, CONFIG.run.stunned);
+    this.fall(other, CONFIG.multi.knocked);
+    d.stats.knocked++;
+    return [{ kind: 'knock', x: (d.x + other.x) / 2, y: Math.min(d.y, other.y) - 26, who: d.id, other: other.id }];
   }
 
   // Fed leeches on the floor are slippery — but only at a run: walking, he picks his way
   // round them; running, every one he steps on (as he steps on it) sends him flying.
   // (Public so the balance sim, which moves the doctor itself, can trip him too.)
-  checkFooting(run = false): WardEvent[] {
-    const d = this.doctor;
+  checkFooting(run = false, who = 0): WardEvent[] {
+    const d = this.doctors[who];
+    const underfoot = this.underfoot[who];
     const r = CONFIG.slip.radius;
     const near = new Set(this.floor.filter((f) => Math.hypot(f.x - d.x, f.y - d.y) <= r).map((f) => f.id));
-    for (const id of [...this.underfoot]) if (!near.has(id)) this.underfoot.delete(id);
+    for (const id of [...underfoot]) if (!near.has(id)) underfoot.delete(id);
     for (const id of near) {
-      if (this.underfoot.has(id)) continue;
-      this.underfoot.add(id);
-      if (run && this.rng.chance(CONFIG.run.slipChance)) return this.slip(id);
+      if (underfoot.has(id)) continue;
+      underfoot.add(id);
+      if (run && this.rng.chance(CONFIG.run.slipChance)) return this.slip(d, id);
     }
     return [];
   }
 
-  private slip(id: number): WardEvent[] {
-    const d = this.doctor;
-    d.dazed = CONFIG.slip.dazed;
-    d.moving = false;
-    d.running = false;
+  private slip(d: Doctor, id: number): WardEvent[] {
+    this.fall(d, CONFIG.slip.dazed);
     this.slips++;
+    d.stats.squashed++;
     // the leech underfoot is squashed
     this.floor.splice(this.floor.findIndex((f) => f.id === id), 1);
-    this.underfoot.delete(id);
+    for (const u of this.underfoot) u.delete(id);
     this.lost++;
     this.shift.fine(CONFIG.score.leechLost);
     // and whatever leeches he held go flying
     let spilled = 0;
-    const hand = this.hand;
+    const hand = d.hand;
     if (hand?.kind === 'leech') {
       for (let i = 0; i < hand.count; i++) {
         const a = this.rng.next() * Math.PI * 2;
         this.escapees.push({ id: this.nextId++, x: d.x + Math.cos(a) * 10, y: d.y + Math.sin(a) * 6, angle: a, bed: null, t: this.rng.next() * 6 });
       }
       spilled = hand.count;
-      this.hand = null;
+      d.hand = null;
     } else if (hand?.kind === 'used') {
       for (let i = 0; i < hand.count; i++) this.dropAt(d.x + (this.rng.next() - 0.5) * 22, d.y + (this.rng.next() - 0.5) * 10);
       spilled = hand.count;
-      this.hand = null;
+      d.hand = null;
     }
-    return [{ kind: 'slip', fee: CONFIG.score.leechLost, spilled }];
+    return [{ kind: 'slip', fee: CONFIG.score.leechLost, spilled, who: d.id }];
   }
 
   // ── Targeting ─────────────────────────────────────────────────────────────
 
-  private facingVec(): Point {
-    const d = this.doctor;
+  private facingVec(d: Doctor): Point {
     return d.facing === 'side' ? { x: d.flip ? -1 : 1, y: 0 } : { x: 0, y: d.facing === 'up' ? -1 : 1 };
   }
 
   // Everything within reach, with the nearest point of each (for "is it in front of him?").
-  private inReach(): { target: Target; dist: number; at: Point }[] {
-    const { x, y } = this.doctor;
+  private inReach(d: Doctor): { target: Target; dist: number; at: Point }[] {
+    const { x, y } = d;
     const out: { target: Target; dist: number; at: Point }[] = [];
     const reach = CONFIG.doctor.reach;
     this.beds.forEach((b, i) => {
@@ -284,14 +404,15 @@ export class Ward {
   // The best target: what he faces and is nearest, among things that can be done now;
   // failing that, the nearest refusal (so a press can say why). A runaway leech and a
   // patient's need edge out the furniture.
-  target(): { target: Target; check: Check } | null {
-    if (this.doctor.dazed > 0) return null;
-    const f = this.facingVec();
-    const { x, y } = this.doctor;
+  target(who = 0): { target: Target; check: Check } | null {
+    const d = this.doctors[who];
+    if (d.dazed > 0) return null;
+    const f = this.facingVec(d);
+    const { x, y } = d;
     let best: { target: Target; check: Check; score: number } | null = null;
     let refusal: { target: Target; check: Check; dist: number } | null = null;
-    for (const { target, dist, at } of this.inReach()) {
-      const check = this.check(target);
+    for (const { target, dist, at } of this.inReach(d)) {
+      const check = this.check(target, who);
       if (!check.ok) {
         if (check.fail !== 'nothing' && (!refusal || dist < refusal.dist)) refusal = { target, check, dist };
         continue;
@@ -309,8 +430,8 @@ export class Ward {
     return refusal ? { target: refusal.target, check: refusal.check } : null;
   }
 
-  check(t: Target): Check {
-    const hand = this.hand;
+  check(t: Target, who = 0): Check {
+    const hand = this.doctors[who].hand;
     const ok = (verb: Verb): Check => ({ ok: true, verb });
     const no = (fail: Fail): Check => ({ ok: false, fail });
     const handful = CONFIG.doctor.handful;
@@ -351,7 +472,10 @@ export class Ward {
           return hand ? no('handsFull') : no('nothing');
         case 'stand':
           if (hand?.kind === 'bdello') return ok('putBack');
-          if (!this.deviceOnStand) return hand ? no('nothing') : no('stand');
+          if (!this.deviceOnStand) {
+            if (hand) return no('nothing');
+            return no(this.doctors.some((o) => o.hand?.kind === 'bdello') ? 'deviceBusy' : 'stand');
+          }
           return hand ? no('handsFull') : ok('takeDevice');
         case 'door':
           return hand?.kind === 'stretcher' ? ok('deliver') : no('door');
@@ -385,48 +509,49 @@ export class Ward {
   // ── Acting ────────────────────────────────────────────────────────────────
 
   // One press of E on a target (pumping is pump(), called while E is held).
-  interact(t: Target): WardEvent[] {
-    const check = this.check(t);
-    if (!check.ok) return [{ kind: 'fail', fail: check.fail, target: t }];
+  interact(t: Target, who = 0): WardEvent[] {
+    const check = this.check(t, who);
+    if (!check.ok) return [{ kind: 'fail', fail: check.fail, target: t, who }];
+    const d = this.doctors[who];
     const out: WardEvent[] = [];
-    const hand = this.hand;
+    const hand = d.hand;
     switch (check.verb) {
       case 'takeLeech':
         this.supply.take();
         if (hand?.kind === 'leech') hand.count++;
-        else this.hand = { kind: 'leech', count: 1 };
-        out.push({ kind: 'take', what: 'leech' });
+        else d.hand = { kind: 'leech', count: 1 };
+        out.push({ kind: 'take', what: 'leech', who });
         break;
       case 'putBackAll':
       case 'putBack':
         if (hand?.kind === 'leech') this.supply.give(hand.count);
         if (hand?.kind === 'bdello') this.deviceOnStand = true;
-        out.push({ kind: 'putBack', what: hand!.kind });
-        this.hand = null;
+        out.push({ kind: 'putBack', what: hand!.kind, who });
+        d.hand = null;
         break;
       case 'takeBandage':
-        this.hand = { kind: 'bandage' };
-        out.push({ kind: 'take', what: 'bandage' });
+        d.hand = { kind: 'bandage' };
+        out.push({ kind: 'take', what: 'bandage', who });
         break;
       case 'takeBottle':
-        this.hand = { kind: 'bottle' };
-        out.push({ kind: 'take', what: 'bottle' });
+        d.hand = { kind: 'bottle' };
+        out.push({ kind: 'take', what: 'bottle', who });
         break;
       case 'takeDevice':
         this.deviceOnStand = false;
-        this.hand = { kind: 'bdello' };
-        out.push({ kind: 'take', what: 'bdello' });
+        d.hand = { kind: 'bdello' };
+        out.push({ kind: 'take', what: 'bdello', who });
         break;
       case 'salt': {
         const count = (hand as { count: number }).count;
         this.salting.push({ left: CONFIG.leech.recycleSeconds, count });
-        this.hand = null;
-        out.push({ kind: 'salt', count });
+        d.hand = null;
+        out.push({ kind: 'salt', count, who });
         break;
       }
       case 'scoop': {
         // a handful: every fed leech within reach, up to what one hand holds
-        const { x, y } = this.doctor;
+        const { x, y } = d;
         let count = hand?.kind === 'used' ? hand.count : 0;
         const first = this.floor.findIndex((f) => t.kind === 'used' && f.id === t.id);
         const order = [first, ...this.floor.map((_, i) => i).filter((i) => i !== first)];
@@ -440,29 +565,30 @@ export class Ward {
           }
         }
         for (let i = this.floor.length - 1; i >= 0; i--) if (taken.has(this.floor[i].id)) this.floor.splice(i, 1);
-        this.hand = { kind: 'used', count };
-        out.push({ kind: 'scoop', count: taken.size });
+        d.hand = { kind: 'used', count };
+        out.push({ kind: 'scoop', count: taken.size, who });
         break;
       }
       case 'catch': {
         const i = this.escapees.findIndex((e) => t.kind === 'escapee' && e.id === t.id);
         this.escapees.splice(i, 1);
         if (hand?.kind === 'leech') hand.count++;
-        else this.hand = { kind: 'leech', count: 1 };
-        out.push({ kind: 'catch' });
+        else d.hand = { kind: 'leech', count: 1 };
+        out.push({ kind: 'catch', who });
         break;
       }
       case 'deliver':
-        this.hand = null;
-        out.push({ kind: 'deliver' });
+        d.hand = null;
+        d.stats.carried++;
+        out.push({ kind: 'deliver', who });
         break;
       case 'lift': {
         const bed = this.beds[(t as { bed: number }).bed];
-        this.hand = { kind: 'stretcher', patient: bed.patient! };
+        d.hand = { kind: 'stretcher', patient: bed.patient! };
         bed.patient = null;
         bed.bites = [];
         bed.freeIn = CONFIG.patient.turnaround;
-        out.push({ kind: 'lift', bed: bed.index });
+        out.push({ kind: 'lift', bed: bed.index, who });
         break;
       }
       case 'apply': {
@@ -470,18 +596,20 @@ export class Ward {
         const p = bed.patient!;
         const slot = p.leeches.indexOf(null);
         p.attach();
+        p.by = who;
         const h = hand as { count: number };
         h.count--;
-        if (h.count <= 0) this.hand = null;
+        if (h.count <= 0) d.hand = null;
         this.applied++;
-        out.push({ kind: 'attach', bed: bed.index, slot, wild: false });
+        d.stats.applied++;
+        out.push({ kind: 'attach', bed: bed.index, slot, wild: false, who });
         break;
       }
       case 'warm': {
         const bed = this.beds[(t as { bed: number }).bed];
         bed.patient!.warm();
-        this.hand = null;
-        out.push({ kind: 'warm', bed: bed.index });
+        d.hand = null;
+        out.push({ kind: 'warm', bed: bed.index, who });
         break;
       }
       case 'bandage': {
@@ -489,11 +617,12 @@ export class Ward {
         const p = bed.patient!;
         const r = p.bandage()!;
         this.dropLeeches(bed.index, r.dropped);
-        this.hand = null;
+        d.hand = null;
         bed.bites = [];
         bed.leaving = 1.2;
+        if (r.outcome === 'green') d.stats.green++;
         this.shift.record({ profile: p.profile, type: p.type, outcome: r.outcome, fee: r.fee });
-        out.push({ kind: 'bandage', bed: bed.index, outcome: r.outcome, fee: r.fee });
+        out.push({ kind: 'bandage', bed: bed.index, outcome: r.outcome, fee: r.fee, who });
         break;
       }
       case 'pump':
@@ -503,10 +632,12 @@ export class Ward {
   }
 
   // Called each frame while E is held with the bdellometer on a bed.
-  pump(bed: number, dt: number): WardEvent[] {
+  pump(bed: number, dt: number, who = 0): WardEvent[] {
+    const d = this.doctors[who];
     const p = this.beds[bed].patient;
-    if (this.hand?.kind !== 'bdello' || !p?.active || this.doctor.dazed > 0) return [];
-    this.pumping = bed;
+    if (d.hand?.kind !== 'bdello' || !p?.active || d.dazed > 0) return [];
+    d.pumping = bed;
+    p.by = who;
     return this.patientEvents(bed, p.pump(dt));
   }
 
@@ -517,14 +648,18 @@ export class Ward {
     const out: WardEvent[] = [];
     const push = (e: WardEvent | WardEvent[]) => (Array.isArray(e) ? out.push(...e) : out.push(e));
 
-    if (this.doctor.dazed > 0) this.doctor.dazed = Math.max(0, this.doctor.dazed - dt);
+    for (const d of this.doctors) {
+      if (d.dazed > 0) d.dazed = Math.max(0, d.dazed - dt);
+      d.pumped = d.pumping;
+      d.pumping = null;
+    }
 
     for (const e of this.shift.tick(dt)) {
       if (e.kind === 'stage') {
         push(e);
         push(this.stageArrivals());
       } else if (e.kind === 'arrival') {
-        this.queue.push({ type: e.type, profile: e.profile, cold: e.cold, left: CONFIG.patient.queuePatience });
+        this.queue.push({ id: this.nextId++, type: e.type, profile: e.profile, cold: e.cold, left: CONFIG.patient.queuePatience });
       } else if (e.kind === 'bell') {
         this.closeShift();
         push(e);
@@ -546,7 +681,7 @@ export class Ward {
     for (const b of this.beds) {
       if (!b.patient && b.freeIn <= 0 && this.queue.length) {
         const q = this.queue.shift()!;
-        b.patient = new Patient(q.type, q.profile, q.cold);
+        b.patient = new Patient(q.type, q.profile, q.cold, q.id);
         b.bites = [];
         push({ kind: 'arrive', bed: b.index });
       }
@@ -561,14 +696,13 @@ export class Ward {
       }
     }
 
-    // patients bleed, leeches feed
+    // patients bleed, leeches feed (a doctor at the bedside calms a nervous man)
     for (const b of this.beds) {
       const p = b.patient;
       if (!p || b.leaving > 0) continue;
-      const near = distToRect(this.doctor.x, this.doctor.y, this.bedRect(b.index)) <= CONFIG.doctor.calmRange;
+      const near = this.anyDoctorWithin(this.bedRect(b.index), CONFIG.doctor.calmRange);
       push(this.patientEvents(b.index, p.tick(dt, near)));
     }
-    this.pumping = null;
 
     push(this.tickEscapes(dt));
     push(this.tickOrderlies(dt));
@@ -585,13 +719,17 @@ export class Ward {
     return out;
   }
 
+  private anyDoctorWithin(r: Rect, range: number): boolean {
+    return this.doctors.some((d) => distToRect(d.x, d.y, r) <= range);
+  }
+
   // What a new stage brings into the ward. Things that arrive mid-day are announced; on a
   // day that starts with them, they're simply there.
   private stageArrivals(): WardEvent[] {
     const out: WardEvent[] = [];
     const spec = CONFIG.stages[this.shift.stage];
     const midday = this.shift.stageIndex > 0;
-    if (spec.machine && !this.deviceOnStand && this.hand?.kind !== 'bdello') {
+    if (spec.machine && !this.deviceOnStand && !this.doctors.some((d) => d.hand?.kind === 'bdello')) {
       this.deviceOnStand = true;
       if (midday) out.push({ kind: 'deviceArrives' });
     }
@@ -603,10 +741,9 @@ export class Ward {
     return out;
   }
 
-  // If something is set down where the doctor stands, he steps out of its way.
+  // If something is set down where a doctor stands, he steps out of its way.
   private clearOf(r: Rect) {
-    const d = this.doctor;
-    if (overlaps(footOf(d.x, d.y), r)) d.y = Math.min(this.layout.walk.y1, r.y + r.h + 3);
+    for (const d of this.doctors) if (overlaps(footOf(d.x, d.y), r)) d.y = Math.min(this.layout.walk.y1, r.y + r.h + 3);
   }
 
   private patientEvents(bed: number, events: ReturnType<Patient['tick']>): WardEvent[] {
@@ -627,6 +764,7 @@ export class Ward {
         case 'faint':
           this.dropLeeches(bed, e.dropped);
           b.bites = [];
+          if (p.by != null) this.doctors[p.by].stats.faints++;
           this.shift.record({ profile: p.profile, type: p.type, outcome: 'faint', fee: CONFIG.score.faint });
           out.push({ kind: 'faint', bed, cause: e.cause, fee: CONFIG.score.faint });
           break;
@@ -649,8 +787,10 @@ export class Ward {
       angle: this.rng.next() * Math.PI * 2,
     };
     this.floor.push(f);
-    // one landing under his feet doesn't trip him as he steps off it
-    if (Math.hypot(f.x - this.doctor.x, f.y - this.doctor.y) <= CONFIG.slip.radius) this.underfoot.add(f.id);
+    // one landing under a doctor's feet doesn't trip him as he steps off it
+    this.doctors.forEach((d, i) => {
+      if (Math.hypot(f.x - d.x, f.y - d.y) <= CONFIG.slip.radius) this.underfoot[i].add(f.id);
+    });
   }
 
   // Fed leeches drop off the bed onto the floor beside it — where people walk, not
@@ -692,13 +832,12 @@ export class Ward {
       const dy = goal.y - e.y;
       const dist = Math.hypot(dx, dy);
       if (e.bed != null && distToRect(e.x, e.y, this.bedRect(e.bed)) <= esc.latchRange) {
-        const attended = distToRect(this.doctor.x, this.doctor.y, this.bedRect(e.bed)) <= CONFIG.doctor.reach;
-        if (!attended) {
+        if (!this.anyDoctorWithin(this.bedRect(e.bed), CONFIG.doctor.reach)) {
           const bed = e.bed;
           const slot = this.beds[bed].patient!.leeches.indexOf(null);
           this.beds[bed].patient!.attach(true);
           this.escapees.splice(i, 1);
-          out.push({ kind: 'latch', bed }, { kind: 'attach', bed, slot, wild: true });
+          out.push({ kind: 'latch', bed }, { kind: 'attach', bed, slot, wild: true, who: null });
           continue;
         }
         e.bed = null; // shooed off: make for the drain
@@ -721,7 +860,7 @@ export class Ward {
     return out;
   }
 
-  // Orderlies cross the ward on their rounds. They won't walk through the doctor:
+  // Orderlies cross the ward on their rounds. They won't walk through a doctor:
   // they wait a moment, then squeeze past.
   private tickOrderlies(dt: number): WardEvent[] {
     const out: WardEvent[] = [];
@@ -737,7 +876,7 @@ export class Ward {
         });
       }
     }
-    const docFoot = footOf(this.doctor.x, this.doctor.y);
+    const feet = this.doctors.map((d) => footOf(d.x, d.y));
     for (let i = this.orderlies.length - 1; i >= 0; i--) {
       const o = this.orderlies[i];
       const goal = o.route[o.leg];
@@ -747,7 +886,8 @@ export class Ward {
       const step = Math.min(dist, CONFIG.orderly.speed * dt);
       const nx = o.x + (dx / (dist || 1)) * step;
       const ny = o.y + (dy / (dist || 1)) * step;
-      const bump = overlaps(bulkOf({ x: nx, y: ny }), docFoot);
+      const bulk = bulkOf({ x: nx, y: ny });
+      const bump = feet.some((f) => overlaps(bulk, f));
       if (bump && o.waited < CONFIG.orderly.patience) {
         if (o.waited === 0) out.push({ kind: 'jostle', x: o.x, y: o.y - 26 });
         o.waited += dt;
@@ -787,14 +927,29 @@ export class Ward {
 
   // Six o'clock: fine the mess on the floor; anyone still abed goes to the night shift.
   private closeShift() {
-    const floor = this.floor.length + this.escapees.length + (this.hand?.kind === 'used' ? this.hand.count : 0);
+    const held = this.doctors.reduce((n, d) => n + (d.hand?.kind === 'used' ? d.hand.count : 0), 0);
+    const floor = this.floor.length + this.escapees.length + held;
     if (floor) this.shift.fine(floor * CONFIG.score.floorLeech);
     this.floorAtBell = floor;
     for (const b of this.beds) {
       const p = b.patient;
       if (p && b.leaving <= 0 && p.active) this.shift.log.push({ profile: p.profile, type: p.type, outcome: 'unfinished', fee: 0 });
     }
-    if (this.hand?.kind === 'stretcher') this.hand = null;
+    for (const d of this.doctors) if (d.hand?.kind === 'stretcher') d.hand = null;
+  }
+
+  // A doctor leaves the game (his player disconnected): whatever he held goes home.
+  dropOut(who: number) {
+    const d = this.doctors[who];
+    const hand = d.hand;
+    if (hand?.kind === 'leech') this.supply.give(hand.count);
+    if (hand?.kind === 'bdello') this.deviceOnStand = true;
+    if (hand?.kind === 'used') this.salting.push({ left: CONFIG.leech.recycleSeconds, count: hand.count });
+    // a man on a stretcher is taken out by the orderlies
+    d.hand = null;
+    d.x = -100; // out of everyone's way
+    d.y = -100;
+    d.moving = d.running = false;
   }
 
   // Start the day at a later stage (testing): the clock jumps, earlier notes are skipped.

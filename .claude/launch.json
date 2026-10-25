@@ -1,6 +1,7 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "dev", "runtimeExecutable": "npx", "runtimeArgs": ["vite", "--port", "5180", "--strictPort"], "port": 5180 }
+    { "name": "dev", "runtimeExecutable": "npx", "runtimeArgs": ["vite", "--port", "5180", "--strictPort"], "port": 5180 },
+    { "name": "server", "runtimeExecutable": "npx", "runtimeArgs": ["wrangler", "dev", "-c", "server/wrangler.jsonc", "--port", "8787"], "port": 8787 }
   ]
 }

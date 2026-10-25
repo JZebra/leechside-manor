@@ -285,8 +285,12 @@ export function ensurePatientTexture(scene: Phaser.Scene, look: PatientLook): st
 }
 
 // The house physician: black coat, cravat, a butcher's apron. Four facings, two steps.
+// Playing together, each doctor keeps his own coat: black, navy, bottle green, claret.
 type Facing = 'down' | 'up' | 'side';
-function doctor(facing: Facing, step: number) {
+export const COATS: [PaletteKey, PaletteKey][] = [['ink1', 'ink'], ['navy1', 'navy0'], ['green1', 'green0'], ['red1', 'red0']];
+export const COAT_TAGS: PaletteKey[] = ['linen1', 'navy3', 'green2', 'red3']; // his name over his head, in his colour
+function doctor(facing: Facing, step: number, coat: number) {
+  const [cloth, shade] = COATS[coat];
   const p = new Pix(14, 24);
   const cx = 7;
   // legs
@@ -298,8 +302,8 @@ function doctor(facing: Facing, step: number) {
     p.rect(cx - 3, 19 + l, 2, 4, 'ink').rect(cx + 1, 19 - rr, 2, 4, 'ink');
   }
   // coat
-  p.poly([[cx - 5, 10], [cx + 5, 10], [cx + 6, 20], [cx - 6, 20]], 'ink1');
-  p.rect(cx + 2, 11, 4, 9, 'ink');
+  p.poly([[cx - 5, 10], [cx + 5, 10], [cx + 6, 20], [cx - 6, 20]], cloth);
+  p.rect(cx + 2, 11, 4, 9, shade);
   if (facing === 'down') {
     // apron with a blood smear, cravat
     p.rect(cx - 3, 12, 7, 8, 'linen1');
@@ -330,10 +334,10 @@ function doctor(facing: Facing, step: number) {
 }
 
 // Flat on his back after a slip, seen from above: legs one way, head the other.
-function doctorFallen() {
+function doctorFallen(coat: number) {
   const p = new Pix(26, 12);
   p.rect(1, 4, 7, 2, 'ink').rect(1, 7, 7, 2, 'ink'); // legs
-  p.poly([[8, 2], [19, 2], [20, 10], [8, 10]], 'ink1'); // coat
+  p.poly([[8, 2], [19, 2], [20, 10], [8, 10]], COATS[coat][0]); // coat
   p.rect(10, 4, 7, 4, 'linen1'); // apron
   p.set(13, 5, 'red2').set(14, 6, 'red1');
   p.rect(17, 0, 3, 3, 'skinB1').rect(17, 9, 3, 3, 'skinB1'); // arms flung out
@@ -633,8 +637,10 @@ export function registerTextures(scene: Phaser.Scene) {
   const add = (key: string, pix: Pix) => {
     if (!scene.textures.exists(key)) scene.textures.addCanvas(key, pix.canvas());
   };
-  for (const f of ['down', 'up', 'side'] as Facing[]) for (const s of [0, 1]) add(`doc:${f}:${s}`, doctor(f, s));
-  add('doc:fallen', doctorFallen());
+  COATS.forEach((_, c) => {
+    for (const f of ['down', 'up', 'side'] as Facing[]) for (const s of [0, 1]) add(`doc:${c}:${f}:${s}`, doctor(f, s, c));
+    add(`doc:${c}:fallen`, doctorFallen(c));
+  });
   add('daze:0', daze(0));
   add('daze:1', daze(1));
   for (let s = 0; s < 2; s++) for (let l = 0; l < 3; l++) add(`orderly:${s}:${l}`, orderly(s, l));

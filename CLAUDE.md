@@ -10,6 +10,8 @@ brought up and chilled men come in from the frost — a hot-water bottle before 
 1831 the Salle Saint-Louis (seven beds, orderlies, runaway leeches; cholera in Hungary slows
 deliveries; the bdellometer at 12:30, drummer boys and nervous conscripts at 3) · 1832 the cholera
 (no deliveries at all; the cold, blue men are cholera patients; faster from 1 pm).
+Playing together (P on the title page): up to four doctors online in the Grande Salle (12 beds, one of
+each station), co-op, joined by quick match or a four-letter code; the server is a Cloudflare Worker.
 Made for Ludum Dare 60 by John Shen, using Claude AI (credits screen: C on the title page). Sister project of `../thirty-leeches` (same palette, Pix, sounds, fonts).
 Title plate: BnF Français 127 f. 258r (Boccaccio, *Des cas des nobles hommes et femmes*), via the BnF's
 IIIF server; BnF terms allow free non-commercial reuse with the credit "Source gallica.bnf.fr / BnF".
@@ -22,13 +24,19 @@ The design brief is `BRIEF.md`.
   think time, detours, slips and orderlies; prints francs, verdicts, faints, slips per day. Re-run after
   touching `src/config.ts`; the per-day verdict lines are set from the careful bot's spread.
 - `npm run build` — typecheck + static build to `dist/` (`base: './'` for itch.io)
-- `npm run zip` — `leechside-manor-itch.zip` with index.html at the root
+- `npm run zip` — `leechside-manor-itch.zip` with index.html at the root (`VITE_SERVER=https://…` to point
+  the build at the deployed multiplayer server; without it, Play together says it isn't set up)
+- `npm run server` — the multiplayer server locally (wrangler dev, :8787; launch config "server").
+  `npm run server:check` typechecks it; `npm run server:deploy` publishes it (needs `wrangler login`)
+- `npm run bots -- ABCD 3` — bot doctors join room ABCD (or `match`) and work the ward; `BOT_SECONDS`
+  makes them leave, `BOT_DEBUG` prints their takings every few seconds
 
 ## Layout
 - `src/config.ts` — **every gameplay number**: the years (`days[]`: year, ward, length, jar, delivery
   schedule or null, escapes, orderlies, what the cold men are called, stages, verdict lines), stages
   (arrival rate, patient mix, share of cold men, and whether the stove / bdellometer are in the ward),
-  slips, orderlies. Change balance here, never in logic. Historical basis:
+  slips, orderlies, and `multi` (players, the Grande Salle, arrivals / jar / verdict lines × player count,
+  how long a colleague stays down). Change balance here, never in logic. Historical basis:
   ~34 M leeches imported in 1827, peak ~57 M in 1832; cholera in Hungary July 1831 (Austrian
   cordon); Paris cholera spring 1832; Broussais's bleeding failed and leeching declined after.
 - `src/data/lines.ts` — every word the player sees: game, year, ward and patient names, the title page,
@@ -41,10 +49,20 @@ The design brief is `BRIEF.md`.
   collision, slips; targeting; the hand; beds and queue; floor leeches, escapes, salting; orderlies),
   `layout.ts` (the two floor plans in art px: beds, stations with sprite box / footprint / reach rect,
   orderly routes).
+- `src/net/` — playing together. `protocol.ts` (every message, both ways; bump `PROTOCOL` when either
+  side changes), `snapshot.ts` (the ward as the server sends it: records of men once, state each time;
+  `applySnapshot` pours it into the browser's mirror Ward), `room.ts` (one game's lobby, countdown, the
+  ward at 30 ticks/s and snapshots at 15/s, the report — pure, tested in `tests/net.test.ts`),
+  `client.ts` (browser only: the WebSocket, the server address, holding messages across scene changes).
+- `server/` — the Cloudflare Worker: `/api/create`, `/api/match`, `/api/room/:code` (WebSocket); the
+  Matchmaker Durable Object (codes, public rooms, quick-match seats pencilled in for 15 s) and a
+  RoomObject per game that wraps `src/net/room.ts`. Its tsconfig includes `src/model`, `src/net`,
+  `src/config.ts` and `src/data` — keep those free of DOM and Phaser.
 - `src/scenes/` — Phaser: Boot (textures), Title (BnF Fr. 127 miniature: Galerius eaten by worms; year
   select; L leaderboard, C credits), Ward (input → model → drawing), Results (signing the register),
-  Epilogue (after 1832: what really happened, in plain English), Board (the leaderboard), Credits.
-- `src/ui/board.ts` — the leaderboard: top 10 per year (a day must earn something to sign), in localStorage
+  Epilogue (after 1832: what really happened, in plain English), Board (the leaderboard), Credits,
+  Together (name; quick match / private / join by code), Lobby (the room before the doors open).
+- `src/ui/board.ts` — the leaderboard (playing alone): top 10 per year (a day must earn something to sign), in localStorage
   (`lc-board`, last name in `lc-name`); local to the browser, not online.
 - `src/art/` — `palette.ts` (Thirty Leeches palette + additions), `pix.ts` (palette-locked buffer),
   `sprites.ts` (every sprite drawn procedurally and registered as a texture).
@@ -73,6 +91,13 @@ The design brief is `BRIEF.md`.
   stops you. `ward.walk()` returns slip and
   collide events — the scene must pass them to `handle()`.
 - Seeded RNG streams (`makeRng(seed, 'ward')`) so `?seed=` reproduces a shift.
+- Playing together: the Ward has `doctors[]` (one alone; `ward.doctor`/`ward.hand` are doctor 0) and every
+  action takes `who`. The server runs the model; each browser moves its own doctor at once (`glide`) and
+  sends where he is (`walkTo` on the server decides slips and collisions, including a run that ends at a
+  colleague's shoulder), sends presses and pump on/off, and draws snapshots. Notes don't pause online
+  (cards in the corner); Esc offers to leave. The Grande Salle is drawn at ⅔ zoom with a second camera
+  for the HUD (`sortCameras`: depth ≥ hud goes to the HUD camera; world text is scaled back up).
+- Typing (names, codes) uses `onType` (the browser's keydown): Phaser re-delivers a frame's queued keys.
 - Every `localStorage` access is wrapped in try/catch.
 - Commit after each milestone; report what to playtest, what to tune, what to cut.
 

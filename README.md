@@ -23,6 +23,21 @@ The years follow the real history: France imported about 34 million leeches in 1
 57 million in 1832; cholera reached Hungary in July 1831 and Paris in spring 1832, where Broussais's
 bleeding failed and leeching began its long decline.
 
+## Playing together
+
+Press **P** on the title page. Up to four doctors share the **Grande Salle**: twelve beds, and one
+jar, one cupboard, one stove, one salt bucket and one bdellometer between you. Each doctor keeps
+his own coat colour; you can run into each other (both down on the flagstones), and the takings
+are shared — Broussais's verdict goes to the whole ward, and the report credits each doctor.
+
+- **Quick match** puts you in any public room with space (or opens one).
+- **A private game** gives you a four-letter code to send your friends.
+- **Join with a code** takes you into a friend's room.
+
+In the room, the host chooses the year; the doors open three seconds after everyone is ready, and
+after each day's report everyone comes back to the room. More doctors bring more patients and a
+bigger jar.
+
 ## Controls
 
 | Key | |
@@ -31,7 +46,8 @@ bleeding failed and leeching began its long decline.
 | E / Space | take, give, apply; hold to pump the bdellometer |
 | Esc | pause |
 | M | mute |
-| L / C (title page) | leaderboard / credits |
+| P / L / C (title page) | play together / leaderboard / credits |
+| Esc (playing together) | leave the game (it carries on without you) |
 
 ## Running it
 
@@ -44,10 +60,35 @@ Testing a later year: `http://localhost:5180/?day=3&stage=epidemic&notes=0` (see
 the debug flags).
 
 ```bash
+npm run server     # the multiplayer server, locally (http://localhost:8787)
+npm run bots -- ABCD 3   # three bot doctors into room ABCD ("match" for quick match)
+```
+
+The dev build finds the local server by itself.
+
+```bash
 npm test           # the ward's rules, headless (Vitest)
 npm run sim        # bots play every year through the real model (balance)
 npm run zip        # leechside-manor-itch.zip, ready for an itch.io HTML upload
 ```
+
+### Publishing the multiplayer server
+
+The server is a Cloudflare Worker with Durable Objects (`server/`), and runs on Cloudflare's free
+plan. Once, with your own Cloudflare account:
+
+```bash
+npx wrangler login
+npm run server:deploy    # prints the address: https://leechside-manor.<you>.workers.dev
+```
+
+Then build the game with that address, so the itch.io copy knows where to find it:
+
+```bash
+VITE_SERVER=https://leechside-manor.<you>.workers.dev npm run zip
+```
+
+A build without `VITE_SERVER` plays alone as before, and Play together says multiplayer isn't set up.
 
 Built with Phaser 3, TypeScript and Vite. All rules live in a pure model (`src/model/`) with no
 Phaser in it; every number is in `src/config.ts`; every sprite is drawn procedurally into a

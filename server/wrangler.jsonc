@@ -1,0 +1,17 @@
+// The multiplayer server: a Cloudflare Worker with two kinds of Durable Object.
+//   npm run server         — run it locally (http://localhost:8787)
+//   npm run server:deploy  — publish it to your Cloudflare account (wrangler login first)
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "leechside-manor",
+  "main": "index.ts",
+  "compatibility_date": "2026-10-01",
+  "durable_objects": {
+    "bindings": [
+      { "name": "ROOMS", "class_name": "RoomObject" },
+      { "name": "MATCHMAKER", "class_name": "Matchmaker" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RoomObject", "Matchmaker"] }],
+  "observability": { "enabled": true }
+}

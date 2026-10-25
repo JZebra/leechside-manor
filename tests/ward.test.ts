@@ -96,7 +96,7 @@ describe('the ward', () => {
     press(w);
     byBed(w, 0);
     const ev = press(w);
-    expect(ev).toContainEqual({ kind: 'bandage', bed: 0, outcome: 'green', fee: CONFIG.score.green });
+    expect(ev).toContainEqual({ kind: 'bandage', bed: 0, outcome: 'green', fee: CONFIG.score.green, who: 0 });
     expect(w.shift.money).toBe(CONFIG.score.green);
   });
 
@@ -120,7 +120,7 @@ describe('the ward', () => {
     expect(w.doctor.x - x0).toBeCloseTo(CONFIG.doctor.speed * CONFIG.doctor.carrying * 0.5, 0);
     const d = w.layout.stations.door.use;
     at(w, d.x + d.w / 2, d.y + d.h + 4, 'up');
-    expect(press(w)).toContainEqual({ kind: 'deliver' });
+    expect(press(w)).toContainEqual({ kind: 'deliver', who: 0 });
     expect(w.hand).toBeNull();
   });
 
@@ -147,7 +147,7 @@ describe('the ward', () => {
   it('a leech that has gone (caught, scooped, squashed) cannot be acted on', () => {
     const w = new Ward('stale');
     w.escapees.push({ id: 7, x: 50, y: 150, angle: 0, bed: null, t: 0 }, { id: 8, x: 300, y: 150, angle: 0, bed: null, t: 0 });
-    expect(w.interact({ kind: 'escapee', id: 99 })).toEqual([{ kind: 'fail', fail: 'nothing', target: { kind: 'escapee', id: 99 } }]);
+    expect(w.interact({ kind: 'escapee', id: 99 })).toEqual([{ kind: 'fail', fail: 'nothing', target: { kind: 'escapee', id: 99 }, who: 0 }]);
     expect(w.escapees.map((e) => e.id)).toEqual([7, 8]);
     expect(w.check({ kind: 'used', id: 42 })).toEqual({ ok: false, fail: 'nothing' });
   });
@@ -158,7 +158,7 @@ describe('the ward', () => {
     press(w);
     byStation(w, 'jar');
     const t: Target = { kind: 'station', id: 'jar' };
-    expect(w.interact(t)).toEqual([{ kind: 'fail', fail: 'handsFull', target: t }]);
+    expect(w.interact(t)).toEqual([{ kind: 'fail', fail: 'handsFull', target: t, who: 0 }]);
   });
 
   it('a chilled man takes no leech until warmed with a hot-water bottle', () => {

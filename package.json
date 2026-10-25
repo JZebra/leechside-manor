@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Ludum Dare 60 (Old Tech) — an Overcooked-style leech ward at the Val-de-Grâce, Paris, 1830s. Sister game to Thirty Leeches.",
+  "description": "Ludum Dare 60 (Old Tech) \u2014 an Overcooked-style leech ward at the Val-de-Gr\u00e2ce, Paris, 1830s. Sister game to Thirty Leeches.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -11,7 +11,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "zip": "npm run build && rm -f leechside-manor-itch.zip && cd dist && zip -qr ../leechside-manor-itch.zip .",
-    "sim": "vite-node scripts/sim.ts"
+    "sim": "vite-node scripts/sim.ts",
+    "server": "wrangler dev -c server/wrangler.jsonc --port 8787",
+    "server:check": "wrangler types -c server/wrangler.jsonc server/worker-configuration.d.ts > /dev/null && tsc -p server",
+    "server:deploy": "wrangler deploy -c server/wrangler.jsonc",
+    "bots": "vite-node scripts/netbot.ts --"
   },
   "dependencies": {
     "@fontsource/eb-garamond": "^5.2.6",
@@ -22,6 +26,7 @@
   "devDependencies": {
     "typescript": "^5.9.3",
     "vite": "^5.4.11",
-    "vitest": "^2.1.9"
+    "vitest": "^2.1.9",
+    "wrangler": "^4.152.0"
   }
 }

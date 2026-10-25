@@ -5,7 +5,7 @@ import { YEAR_TITLE, TYPE_LABEL, COLD_LABEL } from './data/lines';
 
 export type PatientType = 'soldier' | 'anemic' | 'drummer' | 'nervous';
 export type StageId = 'basics' | 'frail' | 'chill' | 'promotion' | 'machine' | 'drummers' | 'cholera' | 'epidemic';
-export type WardId = 'saintCome' | 'saintLouis';
+export type WardId = 'saintCome' | 'saintLouis' | 'grandeSalle';
 
 // Each level is one day's shift in a year of Broussais's reign at the Val-de-Grâce, set to the
 // real history: the leech craze at its height (1828), cholera in Hungary and the leech
@@ -175,6 +175,16 @@ export const CONFIG = {
     walkedOut: -6,
     leechLost: -2, // down the drain, or squashed underfoot
     floorLeech: -1, // each fed leech still on the floor at six
+  },
+
+  // Playing together: up to four doctors in the Grande Salle, sharing one jar, one
+  // cupboard, one stove, one salt bucket and one bdellometer. More doctors, more patients.
+  multi: {
+    maxPlayers: 4,
+    ward: 'grandeSalle' as WardId,
+    rate: [1, 1.7, 2.3, 2.8], // arrivals (and Broussais's verdict lines) × this, by number of doctors
+    jar: [1, 1.5, 1.9, 2.2], // the jar at eight, each delivery and the jar's cap × this
+    knocked: 1.5, // seconds a colleague spends on the floor when someone runs into him
   },
 
   doctor: {

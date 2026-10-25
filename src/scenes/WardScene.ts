@@ -1,18 +1,23 @@
 // The ward: reads the keyboard, steps the Ward model, and draws it. All rules
 // live in src/model; this file only turns state and events into pixels and sound.
+// Playing online, the server steps the model: this scene moves its own doctor at once,
+// sends the server where he is and what he presses, and draws the snapshots it sends back.
 
 import Phaser from 'phaser';
 import { CONFIG } from '../config';
 import { PIXEL, hex, type PaletteKey } from '../art/palette';
-import { ensurePatientTexture, LEECH_SLOTS, SATED, escapeKey, escapeDir, handKey, type PatientLook, type Hat, type Outfit, type Blanket } from '../art/sprites';
-import { Ward, type WardEvent, type Target, type Hand } from '../model/ward';
+import { ensurePatientTexture, LEECH_SLOTS, SATED, COAT_TAGS, escapeKey, escapeDir, handKey, type PatientLook, type Hat, type Outfit, type Blanket } from '../art/sprites';
+import { Ward, type WardEvent, type Target, type Hand, type Doctor } from '../model/ward';
 import type { Patient } from '../model/patient';
 import { BED, WORLD, type Layout, type StationId, type Rect } from '../model/layout';
-import { STAGE_NOTES, VERB, FAIL, SAY, CONTROLS, WARD, PAUSE, type Note } from '../data/lines';
+import { STAGE_NOTES, VERB, FAIL, SAY, CONTROLS, WARD, PAUSE, ONLINE, type Note } from '../data/lines';
 import { sfx, isMuted, setMuted, audioDebug } from '../audio/audio';
 import { playMusic } from '../audio/music';
 import { FLAGS } from '../flags';
-import { fitCamera, text, sprite, place, panel, STAGE } from '../ui/view';
+import { fitCamera, text, sprite, place, panel, STAGE, RES } from '../ui/view';
+import { applySnapshot, type PatientRecord } from '../net/snapshot';
+import { session, type NetClient } from '../net/client';
+import type { Report, Seat } from '../net/protocol';
 
 const P = PIXEL;
 const DEPTH = { floor: 0, floorItem: 2, world: 10, overlay: 9000, prompt: 9500, say: 9600, hud: 10000, note: 20000 };
@@ -34,6 +39,36 @@ interface BedView {
 interface QueueView {
   head: Phaser.GameObjects.Image;
   name: Phaser.GameObjects.Text;
+}
+
+interface DoctorView {
+  body: Phaser.GameObjects.Image;
+  stars: Phaser.GameObjects.Image;
+  carry: Phaser.GameObjects.Image;
+  count: Phaser.GameObjects.Text;
+  device: Phaser.GameObjects.Image;
+  tag: Phaser.GameObjects.Text | null; // his name, playing online
+  coat: number;
+  shown: { x: number; y: number }; // where he's drawn: a colleague glides towards each snapshot
+}
+
+// A game online, as the lobby hands it over.
+export interface OnlineGame {
+  net: NetClient;
+  day: number;
+  seed: string;
+  seats: Seat[];
+}
+
+interface Online extends OnlineGame {
+  me: number; // this player's doctor
+  records: Map<number, PatientRecord>;
+  report: Report | null;
+  stop: (() => void)[];
+  sentAt: number;
+  sent: string; // the last position sent, so standing still costs nothing
+  pumping: boolean;
+  toResults: boolean; // the bell has rung: off to the report as soon as it arrives
 }
 
 type Keys = Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT' | 'E' | 'SPACE' | 'SHIFT', Phaser.Input.Keyboard.Key>;
@@ -68,10 +103,13 @@ export class WardScene extends Phaser.Scene {
   private escapeeSprites = new Map<number, Phaser.GameObjects.Image>();
   private trail: { x: number; y: number; t: number }[] = [];
   private trailIn = 0;
-  private doctor!: Phaser.GameObjects.Image;
-  private carry!: Phaser.GameObjects.Image;
-  private carryCount!: Phaser.GameObjects.Text;
-  private device!: Phaser.GameObjects.Image;
+  private docViews: DoctorView[] = [];
+  private online: Online | null = null;
+  private me = 0; // the doctor this screen moves
+  private zoom = 1; // the world on screen, against a one-doctor ward (⅔ in the Grande Salle)
+  private uiCam: Phaser.Cameras.Scene2D.Camera | null = null;
+  private toast: { view: Phaser.GameObjects.Container; until: number } | null = null;
+  private leaveView: Phaser.GameObjects.Container | null = null;
   private gMeters!: Phaser.GameObjects.Graphics;
   private gHighlight!: Phaser.GameObjects.Graphics;
   private gTrail!: Phaser.GameObjects.Graphics;
@@ -88,7 +126,6 @@ export class WardScene extends Phaser.Scene {
   private recentSays: { x: number; y: number; t: number }[] = [];
   private dayIndex = 0;
   private orderlySprites = new Map<number, Phaser.GameObjects.Image>();
-  private stars!: Phaser.GameObjects.Image;
   private stepIn = 0; // seconds to the next footstep
   private heartIn = 0; // seconds to the next heartbeat
 
@@ -96,8 +133,18 @@ export class WardScene extends Phaser.Scene {
     super('ward');
   }
 
-  init(data: { day?: number }) {
-    this.dayIndex = Math.max(0, Math.min(CONFIG.days.length - 1, data?.day ?? FLAGS.day ?? 0));
+  init(data: { day?: number; online?: OnlineGame }) {
+    const o = data?.online;
+    this.dayIndex = Math.max(0, Math.min(CONFIG.days.length - 1, o?.day ?? data?.day ?? FLAGS.day ?? 0));
+    this.online = o
+      ? { ...o, me: o.seats.find((s) => s.id === o.net.you)?.doctor ?? 0, records: new Map(), report: null, stop: [], sentAt: 0, sent: '', pumping: false, toResults: false }
+      : null;
+    this.me = this.online?.me ?? 0;
+  }
+
+  // This screen's own doctor.
+  private get mine(): Doctor {
+    return this.ward.doctors[this.me];
   }
 
   private get L(): Layout {
@@ -107,8 +154,10 @@ export class WardScene extends Phaser.Scene {
   create() {
     fitCamera(this);
     playMusic('ward');
-    const seed = FLAGS.seed ?? String(Date.now());
-    this.ward = new Ward(seed, this.dayIndex);
+    const o = this.online;
+    this.ward = o
+      ? new Ward(o.seed, o.day, { doctors: o.seats.length, ward: CONFIG.multi.ward }) // a mirror of the server's
+      : new Ward(FLAGS.seed ?? String(Date.now()), this.dayIndex);
     (window as unknown as { ward: Ward }).ward = this.ward;
     this.t = 0;
     this.notes = [];
@@ -122,30 +171,82 @@ export class WardScene extends Phaser.Scene {
     this.orderlySprites.clear();
     this.trail = [];
     this.recentSays = [];
+    this.docViews = [];
+    this.toast = null;
+    this.leaveView = null;
 
     this.stepIn = 0;
     this.heartIn = 0;
 
+    this.fitWorld();
     this.buildRoom();
     this.buildHud();
     this.bindKeys();
 
-    if (FLAGS.stage) this.handle(this.ward.skipTo(FLAGS.stage));
+    if (o) this.listen(o);
+    else if (FLAGS.stage) this.handle(this.ward.skipTo(FLAGS.stage));
+  }
+
+  // A ward bigger than the screen (the Grande Salle) is shown zoomed out, on the same pixel
+  // grid at two-thirds the size; a second camera keeps the HUD and the notes full size.
+  private fitWorld() {
+    const world = this.L.world;
+    this.zoom = WORLD.w / world.w;
+    this.uiCam = null;
+    if (this.zoom === 1) return;
+    const main = this.cameras.main;
+    main.setZoom(RES * this.zoom);
+    main.centerOn((world.w * P) / 2, (world.h * P) / 2);
+    this.uiCam = this.cameras.add(0, 0, main.width, main.height).setZoom(RES);
+    this.uiCam.centerOn(STAGE.w / 2, STAGE.h / 2);
+  }
+
+  // Each object to one camera: the HUD and notes to the full-size one, the ward to the
+  // zoomed one — its words scaled back up so they read the same as in a one-doctor ward.
+  private sortCameras() {
+    const ui = this.uiCam;
+    if (!ui) return;
+    const main = this.cameras.main;
+    for (const o of this.children.list) {
+      const hud = (o as unknown as { depth: number }).depth >= DEPTH.hud;
+      o.cameraFilter = hud ? main.id : ui.id;
+      if (!hud && o instanceof Phaser.GameObjects.Text) o.setScale(1 / this.zoom);
+    }
+  }
+
+  // The server's half of the conversation.
+  private listen(o: Online) {
+    o.stop.push(
+      o.net.release((m) => {
+        if (m.t === 'snap') {
+          applySnapshot(this.ward, m.s, o.records, o.me);
+          this.handle(m.ev);
+        } else if (m.t === 'over') {
+          o.report = m.report;
+          if (o.toResults) this.toResults();
+        }
+      }),
+      o.net.onTrouble((t) => {
+        this.scene.start('together', { trouble: t });
+      }),
+    );
+    this.events.once('shutdown', () => o.stop.forEach((f) => f()));
   }
 
   // ── Construction ──────────────────────────────────────────────────────────
 
   private buildRoom() {
-    this.add.tileSprite(0, WORLD.wall * P, WORLD.w, WORLD.h - WORLD.wall, 'floor').setOrigin(0).setScale(P).setDepth(DEPTH.floor);
-    this.add.tileSprite(0, 0, WORLD.w, WORLD.wall, 'wall').setOrigin(0).setScale(P).setDepth(DEPTH.floor);
     const L = this.L;
+    const world = L.world;
+    this.add.tileSprite(0, world.wall * P, world.w, world.h - world.wall, 'floor').setOrigin(0).setScale(P).setDepth(DEPTH.floor);
+    this.add.tileSprite(0, 0, world.w, world.wall, 'wall').setOrigin(0).setScale(P).setDepth(DEPTH.floor);
     for (const x of L.windows) sprite(this, 'window', x, 3).setDepth(DEPTH.floor + 1);
     sprite(this, 'drain', L.drain.x - 6, L.drain.y - 4).setDepth(DEPTH.floor + 1);
     // openings in the side walls where the orderlies come and go
     const gd = this.add.graphics().setDepth(DEPTH.floor + 1);
     for (const route of L.routes) {
       for (const end of [route[0], route[route.length - 1]]) {
-        const x = end.x < WORLD.w / 2 ? 0 : WORLD.w - 4;
+        const x = end.x < world.w / 2 ? 0 : world.w - 4;
         gd.fillStyle(hex('ink')).fillRect(x * P, (end.y - 22) * P, 4 * P, 26 * P);
         gd.fillStyle(hex('wood1')).fillRect((x + (x ? 0 : 3)) * P, (end.y - 22) * P, P, 26 * P);
       }
@@ -178,11 +279,20 @@ export class WardScene extends Phaser.Scene {
 
     this.gMeters = this.add.graphics().setDepth(DEPTH.overlay);
     this.gHighlight = this.add.graphics().setDepth(DEPTH.prompt);
-    this.doctor = sprite(this, 'doc:down:0');
-    this.stars = sprite(this, 'daze:0').setDepth(DEPTH.prompt).setVisible(false);
-    this.carry = sprite(this, 'item:bandage').setVisible(false);
-    this.carryCount = text(this, 0, 0, '', { size: 16, color: 'paper0', stroke: 'ink', strokeWidth: 4, bold: true }).setDepth(DEPTH.prompt);
-    this.device = sprite(this, 'cup:0:0').setVisible(false);
+    this.ward.doctors.forEach((d) => {
+      const seat = this.online?.seats.find((s) => s.doctor === d.id);
+      const coat = seat?.slot ?? d.id;
+      this.docViews.push({
+        body: sprite(this, `doc:${coat}:down:0`),
+        stars: sprite(this, 'daze:0').setDepth(DEPTH.prompt).setVisible(false),
+        carry: sprite(this, 'item:bandage').setVisible(false),
+        count: text(this, 0, 0, '', { size: 16, color: 'paper0', stroke: 'ink', strokeWidth: 4, bold: true }).setDepth(DEPTH.prompt),
+        device: sprite(this, 'cup:0:0').setVisible(false),
+        tag: seat ? text(this, 0, 0, seat.name, { size: 14, italic: true, color: COAT_TAGS[coat], stroke: 'ink', strokeWidth: 4 }).setOrigin(0.5, 1).setDepth(DEPTH.prompt - 1) : null,
+        coat,
+        shown: { x: d.x, y: d.y },
+      });
+    });
     this.prompt = text(this, 0, 0, '', { size: 17, color: 'paper0', stroke: 'ink', strokeWidth: 5 }).setOrigin(0.5, 1).setDepth(DEPTH.prompt);
   }
 
@@ -202,6 +312,7 @@ export class WardScene extends Phaser.Scene {
       mute: text(this, 1262, 72, '', { size: 14, italic: true, color: 'paper2', stroke: 'ink', strokeWidth: 3 }).setOrigin(1, 0).setDepth(DEPTH.hud),
     };
     sprite(this, 'item:leech', 1176 / P, 25 / P).setDepth(DEPTH.hud);
+    if (this.online) text(this, 1262, 690, ONLINE.room(this.online.net.code), { size: 15, italic: true, color: 'paper2', stroke: 'ink', strokeWidth: 3 }).setOrigin(1, 0).setDepth(DEPTH.hud);
     for (let i = 0; i < 6; i++) {
       const ay = 38 + i * 26;
       this.queueViews.push({
@@ -222,8 +333,8 @@ export class WardScene extends Phaser.Scene {
     };
     window.addEventListener('keydown', onKey);
     this.events.once('shutdown', () => window.removeEventListener('keydown', onKey));
-    kb.on('keydown-ESC', () => this.togglePause());
-    kb.on('keydown-P', () => this.togglePause());
+    kb.on('keydown-ESC', () => (this.online ? this.toggleLeave() : this.togglePause()));
+    kb.on('keydown-P', () => !this.online && this.togglePause());
     kb.on('keydown-M', () => {
       setMuted(!isMuted());
       sfx('click');
@@ -241,6 +352,7 @@ export class WardScene extends Phaser.Scene {
   update(_time: number, deltaMs: number) {
     const real = Math.min(deltaMs / 1000, 0.1);
     this.t += real;
+    if (this.online) return this.updateOnline(real, this.online);
     const k = this.keys;
     if (this.noteView) {
       this.render();
@@ -290,16 +402,66 @@ export class WardScene extends Phaser.Scene {
     this.render();
   }
 
+  // Online: no pausing for notes (they come as cards in the corner), and the clock is the
+  // server's. Move our doctor, tell the server, hold the pump if E is held on a bed.
+  private updateOnline(real: number, o: Online) {
+    const now = performance.now() / 1000; // cards last by the clock on the wall, however slow the frames
+    if (this.notes.length && (!this.toast || now > this.toast.until)) this.showToast(this.notes.shift()!);
+    if (this.toast && now > this.toast.until) {
+      this.toast.view.destroy();
+      this.toast = null;
+    }
+    const k = this.keys;
+    const d = this.mine;
+    const free = !this.ending && !this.leaveView && d.dazed <= 0;
+    this.pumpBed = null;
+    if (free && (k.E.isDown || k.SPACE.isDown) && d.hand?.kind === 'bdello') {
+      const tg = this.ward.target(this.me);
+      if (tg?.check.ok && tg.check.verb === 'pump' && tg.target.kind === 'bed') this.pumpBed = tg.target.bed;
+    }
+    const pumping = this.pumpBed != null;
+    if (pumping !== o.pumping) o.net.send({ t: 'pump', on: (o.pumping = pumping) });
+    let ix = 0;
+    let iy = 0;
+    if (pumping) {
+      d.moving = false;
+      this.pumpTime += real;
+      this.pumpSoundIn -= real;
+      if (this.pumpSoundIn <= 0) {
+        sfx('pump');
+        this.pumpSoundIn = 0.42;
+      }
+    } else {
+      this.pumpTime = 0;
+      this.pumpSoundIn = 0;
+      if (free) {
+        ix = (k.D.isDown || k.RIGHT.isDown ? 1 : 0) - (k.A.isDown || k.LEFT.isDown ? 1 : 0);
+        iy = (k.S.isDown || k.DOWN.isDown ? 1 : 0) - (k.W.isDown || k.UP.isDown ? 1 : 0);
+      }
+      this.ward.glide(ix, iy, real, k.SHIFT.isDown, this.me);
+    }
+    // where he is, twenty times a second, while anything changes (or he pushes against something)
+    const run = d.running;
+    const state = `${d.x.toFixed(1)},${d.y.toFixed(1)},${d.facing},${d.flip},${run}`;
+    if (this.t - o.sentAt >= 0.05 && (state !== o.sent || ix || iy)) {
+      o.net.send({ t: 'move', x: d.x, y: d.y, run, facing: d.facing, flip: d.flip, ix, iy });
+      o.sent = state;
+      o.sentAt = this.t;
+    }
+    this.ambience(real);
+    this.render();
+  }
+
   // Sounds that follow the state of the ward rather than single events: the doctor's
   // footsteps, and a slow heartbeat while any man is near fainting.
   private ambience(real: number) {
     const ward = this.ward;
-    const d = ward.doctor;
+    const d = this.mine;
     if (d.moving && d.dazed <= 0) {
       this.stepIn -= real;
       if (this.stepIn <= 0) {
         sfx('footstep');
-        this.stepIn = (ward.hand?.kind === 'stretcher' ? 0.42 : 0.3) / (d.running ? 1.6 : 1);
+        this.stepIn = (d.hand?.kind === 'stretcher' ? 0.42 : 0.3) / (d.running ? 1.6 : 1);
       }
     } else this.stepIn = 0.08; // the first step lands just after he sets off
 
@@ -324,6 +486,12 @@ export class WardScene extends Phaser.Scene {
   // One press of E: dismiss a note, or act on the target right now (its sound plays at once).
   private press() {
     if (!this.scene.isActive()) return;
+    if (this.online) {
+      if (this.leaveView) return this.leave();
+      const tg = this.ending ? null : this.ward.target(this.me);
+      if (tg && !(tg.check.ok && tg.check.verb === 'pump')) this.online.net.send({ t: 'press' });
+      return;
+    }
     if (this.noteView) {
       if (this.t - this.noteShownAt > 0.35) this.closeNote();
       return;
@@ -341,6 +509,11 @@ export class WardScene extends Phaser.Scene {
       switch (e.kind) {
         case 'stage':
           if (FLAGS.notes) this.notes.push(STAGE_NOTES[e.id]);
+          break;
+        case 'knock':
+          sfx('thud');
+          sfx('grunt');
+          this.say(SAY.knock, e.x, e.y, 'bad');
           break;
         case 'stoveArrives':
           sfx('door');
@@ -371,6 +544,7 @@ export class WardScene extends Phaser.Scene {
           sfx(e.wild ? 'latch' : 'squelch');
           break;
         case 'fail':
+          if (e.who !== this.me) break; // only the one who pressed hears why not
           sfx(e.fail === 'cold' ? 'refuse' : 'nope');
           if (e.target) this.sayAt(this.targetRect(e.target), FAIL[e.fail], 'info');
           break;
@@ -442,7 +616,7 @@ export class WardScene extends Phaser.Scene {
           sfx('slipSplat');
           sfx('slip');
           sfx('thud');
-          this.say(`${SAY.slip}  ${e.fee} fr${e.spilled ? SAY.spilled(e.spilled) : ''}`, ward.doctor.x, ward.doctor.y - 26, 'bad');
+          this.say(`${SAY.slip}  ${e.fee} fr${e.spilled ? SAY.spilled(e.spilled) : ''}`, ward.doctors[e.who].x, ward.doctors[e.who].y - 26, 'bad');
           break;
         case 'collide':
           sfx('thud');
@@ -465,7 +639,7 @@ export class WardScene extends Phaser.Scene {
     if (t.kind === 'station') return this.L.stations[t.id].box;
     const list = t.kind === 'used' ? this.ward.floor : this.ward.escapees;
     const f = list.find((x) => x.id === t.id);
-    return f ? { x: f.x - 6, y: f.y - 6, w: 12, h: 12 } : { x: this.ward.doctor.x, y: this.ward.doctor.y - 24, w: 1, h: 1 };
+    return f ? { x: f.x - 6, y: f.y - 6, w: 12, h: 12 } : { x: this.mine.x, y: this.mine.y - 24, w: 1, h: 1 };
   }
 
   private sayAt(r: Rect, str: string, tone: Tone) {
@@ -479,7 +653,7 @@ export class WardScene extends Phaser.Scene {
     this.recentSays = this.recentSays.filter((s) => this.t - s.t < 0.9);
     while (this.recentSays.some((s) => Math.abs(s.x - ax) < 40 && Math.abs(s.y - ay) < 9)) ay -= 9;
     this.recentSays.push({ x: ax, y: ay, t: this.t });
-    const x = Math.min(STAGE.w - 120, Math.max(120, Math.round(ax) * P));
+    const x = Math.min(this.L.world.w * P - 120, Math.max(120, Math.round(ax) * P));
     const msg = text(this, x, Math.round(ay) * P, str, { size: 18, color: TONE[tone], stroke: 'ink', strokeWidth: 5, align: 'center' })
       .setOrigin(0.5, 1).setDepth(DEPTH.say);
     this.tweens.add({
@@ -559,8 +733,73 @@ export class WardScene extends Phaser.Scene {
   private endShift() {
     this.ending = true;
     sfx('bell');
-    this.say(SAY.bell, WORLD.w / 2, 110, 'info');
-    this.time.delayedCall(2200, () => this.scene.start('results', { ward: this.ward }));
+    this.say(SAY.bell, this.L.world.w / 2, 110, 'info');
+    this.time.delayedCall(2200, () => {
+      const o = this.online;
+      if (!o) return this.scene.start('results', { ward: this.ward });
+      o.toResults = true;
+      if (o.report) this.toResults();
+    });
+  }
+
+  // Online: the report has come; fill the mirror ward's books from it and go.
+  private toResults() {
+    const o = this.online!;
+    const r = o.report!;
+    const shift = this.ward.shift;
+    shift.log.splice(0, shift.log.length, ...r.log);
+    shift.money = r.money;
+    shift.over = true;
+    Object.assign(this.ward, { applied: r.applied, lost: r.lost, slips: r.slips, floorAtBell: r.floorAtBell });
+    this.scene.start('results', { ward: this.ward, online: { net: o.net, report: r } });
+  }
+
+  // A stage note, online: a card in the corner for a while, and the game goes on.
+  private showToast(note: Note) {
+    sfx('page');
+    this.toast?.view.destroy();
+    const c = this.add.container(0, 0).setDepth(DEPTH.note);
+    // bottom left: in the Grande Salle, the floor there is clear of every bed
+    const w = 291;
+    const x = 12;
+    const g = this.add.graphics();
+    const title = text(this, x + 16, 14, note.title, { font: 'display', size: 20, wrap: w - 32 });
+    const who = text(this, x + 16, title.height + 18, note.speaker, { size: 14, italic: true, color: 'red1', wrap: w - 32 });
+    const hint = text(this, x + 16, who.y + who.height + 8, note.hint ?? note.body.join(' '), { size: 15, wrap: w - 32, color: 'wood2', lineSpacing: 1 });
+    const h = Math.ceil((hint.y + hint.height + 16) / P) * P;
+    const y = STAGE.h - h - 12;
+    panel(g, x, y, w, h, 'paper1');
+    for (const o of [title, who, hint]) o.y += y;
+    c.add([g, title, who, hint]);
+    this.toast = { view: c, until: performance.now() / 1000 + 14 };
+  }
+
+  private toggleLeave() {
+    if (this.leaveView) {
+      this.leaveView.destroy();
+      this.leaveView = null;
+      return;
+    }
+    sfx('page');
+    const c = this.add.container(0, 0).setDepth(DEPTH.note);
+    const g = this.add.graphics();
+    const w = 600;
+    const x = (STAGE.w - w) / 2;
+    const y = 250;
+    panel(g, x, y, w, 186, 'paper1');
+    c.add([
+      g,
+      text(this, x + w / 2, y + 26, ONLINE.leaveTitle, { font: 'display', size: 34 }).setOrigin(0.5, 0),
+      text(this, x + w / 2, y + 80, ONLINE.leaveBody, { size: 18, wrap: w - 80, align: 'center', color: 'wood2' }).setOrigin(0.5, 0),
+      text(this, x + w / 2, y + 140, ONLINE.leaveKeys, { font: 'display', size: 22, color: 'red2' }).setOrigin(0.5, 0),
+    ]);
+    this.leaveView = c;
+  }
+
+  private leave() {
+    sfx('page');
+    session.set(null);
+    this.scene.start('title');
   }
 
   // ── Drawing ───────────────────────────────────────────────────────────────
@@ -571,7 +810,7 @@ export class WardScene extends Phaser.Scene {
     this.renderStations();
     this.renderBeds();
     this.renderFloor();
-    this.renderDoctor();
+    this.renderDoctors();
     this.renderHighlight();
     this.renderQueue();
 
@@ -584,12 +823,13 @@ export class WardScene extends Phaser.Scene {
     const secs = (n: number) => `${Math.max(0, Math.ceil(n))} s`;
     let banner = '';
     if (!s.deliveries) banner = WARD.noDeliveries;
-    else if (s.jar < CONFIG.supply.cap) banner = WARD.nextJar(secs(s.nextDelivery));
+    else if (s.jar < s.cap) banner = WARD.nextJar(secs(s.nextDelivery));
     this.hud.banner.setText(banner).setColor(s.deliveries ? '#ecdfc0' : '#c8483a');
     const salting = ward.salting.reduce((n, x) => n + x.count, 0);
     const back = ward.salting.length ? Math.min(...ward.salting.map((x) => x.left)) : 0;
     this.hud.salt.setText(salting ? WARD.salting(salting, secs(back)) : '');
     void t;
+    this.sortCameras();
   }
 
   private renderStations() {
@@ -758,45 +998,66 @@ export class WardScene extends Phaser.Scene {
     }
   }
 
-  private renderDoctor() {
+  private renderDoctors() {
     const ward = this.ward;
-    const d = ward.doctor;
-    const step = d.moving ? Math.floor(this.t / (d.running ? 0.09 : 0.15)) % 2 : 0;
-    const depth = DEPTH.world + d.y;
-    const down = d.dazed > 0;
-    if (down) {
-      // flat on the flagstones, stars wheeling
-      this.doctor.setTexture('doc:fallen').setFlipX(d.flip).setDepth(depth);
-      place(this.doctor, d.x - 13, d.y - 10);
-      this.stars.setVisible(true).setTexture(`daze:${Math.floor(this.t * 5) % 2}`);
-      place(this.stars, d.x - 7 + (d.flip ? -6 : 6), d.y - 16);
-    } else {
-      this.stars.setVisible(false);
-      this.doctor.setTexture(`doc:${d.facing}:${step}`).setFlipX(d.facing === 'side' && d.flip).setDepth(depth);
-      place(this.doctor, d.x - 7, d.y - 24);
-    }
-    this.renderOrderlies();
+    const k = 1 - Math.exp(-this.game.loop.delta / 1000 * 18);
+    ward.doctors.forEach((d, i) => {
+      const v = this.docViews[i];
+      // a colleague, online, glides towards where the server last put him
+      const s = v.shown;
+      const remote = !!this.online && i !== this.me;
+      if (!remote || Math.hypot(d.x - s.x, d.y - s.y) > 40) {
+        s.x = d.x;
+        s.y = d.y;
+      } else {
+        s.x += (d.x - s.x) * k;
+        s.y += (d.y - s.y) * k;
+      }
+      const gone = d.x < 0; // his player has left
+      const step = d.moving ? Math.floor(this.t / (d.running ? 0.09 : 0.15)) % 2 : 0;
+      const depth = DEPTH.world + s.y;
+      const down = d.dazed > 0;
+      v.body.setVisible(!gone);
+      if (down) {
+        // flat on the flagstones, stars wheeling
+        v.body.setTexture(`doc:${v.coat}:fallen`).setFlipX(d.flip).setDepth(depth);
+        place(v.body, s.x - 13, s.y - 10);
+        v.stars.setVisible(!gone).setTexture(`daze:${Math.floor(this.t * 5) % 2}`);
+        place(v.stars, s.x - 7 + (d.flip ? -6 : 6), s.y - 16);
+      } else {
+        v.stars.setVisible(false);
+        v.body.setTexture(`doc:${v.coat}:${d.facing}:${step}`).setFlipX(d.facing === 'side' && d.flip).setDepth(depth);
+        place(v.body, s.x - 7, s.y - 24);
+      }
 
-    const hand = ward.hand;
-    const pumping = this.pumpBed != null;
-    this.device.setVisible(pumping);
-    if (pumping) {
-      const b = this.L.beds[this.pumpBed!];
-      const stroke = Math.floor(this.pumpTime / 0.21) % 2;
-      const fill = Math.floor(this.pumpTime * 2.5) % 5;
-      this.device.setTexture(`cup:${stroke}:${fill}`).setDepth(DEPTH.world + b.y + BED.h);
-      place(this.device, b.x + 7, b.y + 12);
-    }
-    const key = down ? null : carryTexture(hand);
-    this.carry.setVisible(!!key && !pumping);
-    this.carryCount.setVisible(!down && hand?.kind === 'used' && hand.count > 1);
-    if (key && !pumping) {
-      this.carry.setTexture(key).setDepth(depth + 0.5);
-      const fr = this.carry.frame;
-      if (hand!.kind === 'stretcher') place(this.carry, d.x - 17, d.y - 16);
-      else place(this.carry, d.x - Math.floor(fr.width / 2), d.y - 24 - fr.height + 3);
-      if (hand?.kind === 'used') this.carryCount.setText(`×${hand.count}`).setPosition((d.x + 5) * P, (d.y - 36) * P);
-    }
+      const hand = d.hand;
+      const pumpBed = i === this.me ? this.pumpBed : d.pumped;
+      const pumping = pumpBed != null && !gone;
+      v.device.setVisible(pumping);
+      if (pumping) {
+        const b = this.L.beds[pumpBed!];
+        const t = i === this.me ? this.pumpTime : this.t;
+        v.device.setTexture(`cup:${Math.floor(t / 0.21) % 2}:${Math.floor(t * 2.5) % 5}`).setDepth(DEPTH.world + b.y + BED.h);
+        place(v.device, b.x + 7, b.y + 12);
+      }
+      const key = down || gone ? null : carryTexture(hand);
+      v.carry.setVisible(!!key && !pumping);
+      v.count.setVisible(!down && !gone && hand?.kind === 'used' && hand.count > 1);
+      let top = s.y - 25;
+      if (key && !pumping) {
+        v.carry.setTexture(key).setDepth(depth + 0.5);
+        const fr = v.carry.frame;
+        if (hand!.kind === 'stretcher') place(v.carry, s.x - 17, s.y - 16);
+        else {
+          place(v.carry, s.x - Math.floor(fr.width / 2), s.y - 24 - fr.height + 3);
+          top -= fr.height;
+        }
+        if (hand?.kind === 'used') v.count.setText(`×${hand.count}`).setPosition((s.x + 5) * P, (s.y - 36) * P);
+      }
+      // his name over his head, out of the way of the prompt (which is ours alone)
+      if (v.tag) v.tag.setVisible(!gone).setPosition(Math.round(s.x) * P, (Math.round(down ? s.y - 12 : top) - (i === this.me ? 9 : 1)) * P);
+    });
+    this.renderOrderlies();
   }
 
   private renderOrderlies() {
@@ -819,8 +1080,8 @@ export class WardScene extends Phaser.Scene {
     const ward = this.ward;
     const g = this.gHighlight;
     g.clear();
-    const d = ward.doctor;
-    const tg = this.ending ? null : ward.target();
+    const d = this.mine;
+    const tg = this.ending || this.leaveView ? null : ward.target(this.me);
     let label = '';
     if (tg?.check.ok) {
       const r = this.targetRect(tg.target);
@@ -834,7 +1095,7 @@ export class WardScene extends Phaser.Scene {
       }
       label = tg.check.verb === 'pump' ? (this.pumpBed != null ? WARD.pumping : WARD.hold(VERB.pump)) : WARD.press(VERB[tg.check.verb]);
     }
-    const lift = ward.hand && ward.hand.kind !== 'stretcher' && this.pumpBed == null ? this.carry.frame.height : 0;
+    const lift = d.hand && d.hand.kind !== 'stretcher' && this.pumpBed == null ? this.docViews[this.me].carry.frame.height : 0;
     this.prompt.setText(label).setPosition(Math.round(d.x) * P, (Math.round(d.y) - 25 - lift) * P);
   }
 

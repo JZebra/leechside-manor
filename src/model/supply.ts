@@ -9,11 +9,13 @@ export type SupplyEvent = { kind: 'delivery'; count: number };
 export class Supply {
   jar: number;
   readonly schedule: { every: number; size: number } | null;
+  readonly cap: number; // deliveries never fill the jar past this
   nextDelivery: number;
 
-  constructor(start: number, schedule: { every: number; size: number } | null) {
+  constructor(start: number, schedule: { every: number; size: number } | null, cap: number = CONFIG.supply.cap) {
     this.jar = start;
     this.schedule = schedule;
+    this.cap = cap;
     this.nextDelivery = schedule?.every ?? Infinity;
   }
 
@@ -37,7 +39,7 @@ export class Supply {
     this.nextDelivery -= dt;
     if (this.nextDelivery > 0) return [];
     this.nextDelivery += sch.every;
-    const count = Math.max(0, Math.min(sch.size, CONFIG.supply.cap - this.jar));
+    const count = Math.max(0, Math.min(sch.size, this.cap - this.jar));
     if (!count) return [];
     this.jar += count;
     return [{ kind: 'delivery', count }];

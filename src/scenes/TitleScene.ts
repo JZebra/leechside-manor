@@ -82,6 +82,10 @@ export class TitleScene extends Phaser.Scene {
       sfx('page');
       this.scene.start('board');
     });
+    kb.on('keydown-P', () => {
+      sfx('page');
+      this.scene.start('together');
+    });
     kb.on('keydown-C', () => {
       sfx('page');
       this.scene.start('credits');

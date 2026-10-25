@@ -4,6 +4,7 @@
 // Edit freely — nothing here is logic. (Functions are for text with numbers or names in it.)
 
 import type { StageId, PatientType } from '../config';
+import type { Trouble } from '../net/protocol';
 
 // ── Names ────────────────────────────────────────────────────────────────────
 
@@ -18,6 +19,7 @@ export const YEAR_TITLE: Record<number, string> = {
 export const WARD_NAME = {
   saintCome: 'Salle Saint-Côme',
   saintLouis: 'Salle Saint-Louis',
+  grandeSalle: 'Grande Salle', // playing together
 };
 
 // Shown under a man's name in the ward and in the report.
@@ -49,7 +51,7 @@ export const TITLE = {
   locked: 'not yet',
   soundOn: 'Sound on (M)',
   soundOff: 'Sound off (M)',
-  menu: 'L — Leaderboard   ·   C — Credits',
+  menu: 'P — Play together   ·   L — Leaderboard   ·   C — Credits',
   byline: 'originally created for Ludum Dare 60 · John Shen',
 };
 
@@ -161,6 +163,7 @@ export const FAIL = {
   notDone: 'He’s fainted — carry him out',
   door: 'Only fainted men go out this door',
   stand: 'The bdellometer hasn’t arrived yet',
+  deviceBusy: 'A colleague has the bdellometer',
   scoopFull: 'Can’t hold any more',
   handful: 'You can only carry three',
   nothing: 'Nothing to do here',
@@ -191,6 +194,7 @@ export const SAY = {
   salted: (count: number) => `Salted ${count}`,
   jostle: 'Pardon, Monsieur!',
   collide: 'Ran into an orderly!',
+  knock: 'Ran into a colleague!',
   bell: 'The six o’clock bell',
 };
 
@@ -245,6 +249,56 @@ export const REPORT = {
   epilogue: 'E / Space — what happened next',
   retry: 'R — this day again',
   title: 'T — title',
+};
+
+// ── Playing together ─────────────────────────────────────────────────────────
+
+export const TOGETHER = {
+  heading: 'Play together',
+  subheading: 'Up to four doctors in the Grande Salle, sharing one jar, one cupboard, one stove and one bdellometer.',
+  nameLabel: 'Your name (type to change it)',
+  quick: '1 — Quick match: join anyone who’s waiting',
+  private: '2 — A private game: get a code to share with friends',
+  join: '3 — Join with a code',
+  codeLabel: 'Type the room’s four letters, then Enter',
+  back: 'Esc — back',
+  connecting: 'Knocking at the door…',
+  trouble: {
+    full: 'That room is full: four doctors at most.',
+    started: 'That game has already begun. Try another, or wait for its bell.',
+    missing: 'There’s no room with that code.',
+    version: 'The server has a newer version of the game: reload the page.',
+    lost: 'The connection to the server was lost.',
+    unreachable: 'Can’t reach the multiplayer server.',
+    unset: 'Multiplayer isn’t set up in this copy of the game.',
+  } as Record<Trouble, string>,
+};
+
+export const LOBBY = {
+  room: (code: string) => `Room ${code}`,
+  private: 'A private room: friends join with this code, from Play together on the title page.',
+  public: 'A public room: anyone using Quick match may join.',
+  empty: 'an empty place',
+  ready: 'ready',
+  notReady: 'not ready',
+  host: 'chooses the year',
+  you: '(you)',
+  yearHost: '← → or 1–3 to choose the year',
+  yearOther: (name: string) => `${name} chooses the year`,
+  readyKey: 'Space — I’m ready',
+  unreadyKey: 'Space — not ready after all',
+  countdown: (n: number) => `The doors open in ${n}…`,
+  waiting: 'The doors open when everyone is ready.',
+  leave: 'Esc — leave the room',
+};
+
+export const ONLINE = {
+  room: (code: string) => `Room ${code}`,
+  leaveTitle: 'Leave the ward?',
+  leaveBody: 'The others carry on without you; whatever you hold goes back where it came from.',
+  leaveKeys: 'E — leave   ·   Esc — stay',
+  toLobby: 'E / Space — back to the room',
+  credits: ['Doctor', 'Bled right', 'Fainted', 'Squashed', 'Bumped', 'Carried out'],
 };
 
 // ── The register (leaderboard) ───────────────────────────────────────────────

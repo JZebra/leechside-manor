@@ -41,6 +41,17 @@ export interface TextOpts {
   lineSpacing?: number;
 }
 
+// Typing (names, room codes): the browser's own keydown, while the scene runs. Phaser's
+// queue hands a scene every key pressed since its last step again on each one, so
+// letters typed within a single frame come out doubled.
+export function onType(scene: Phaser.Scene, fn: (e: KeyboardEvent) => void) {
+  const listen = (e: KeyboardEvent) => {
+    if (scene.scene.isActive()) fn(e);
+  };
+  window.addEventListener('keydown', listen);
+  scene.events.once('shutdown', () => window.removeEventListener('keydown', listen));
+}
+
 export function text(scene: Phaser.Scene, x: number, y: number, str: string, o: TextOpts = {}) {
   const style: Phaser.Types.GameObjects.Text.TextStyle = {
     fontFamily: FONT[o.font ?? 'body'],

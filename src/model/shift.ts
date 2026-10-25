@@ -35,19 +35,22 @@ export class Shift {
   private readonly looks: Rng; // cosmetic only: its own stream, so a seed's patients and fates don't change
   readonly day: number; // 0-based index into CONFIG.days
   readonly spec: DaySpec;
+  readonly rate: number; // arrivals × this (more doctors, more patients)
   elapsed = 0; // real seconds
   stageIndex = 0;
   money = 0;
   over = false;
   log: Entry[] = [];
   private arrivalIn = 0;
-  private opening: number = CONFIG.arrivals.opening;
+  private opening: number;
   private usedNames = new Set<string>();
   private started = false;
 
-  constructor(seed: string, day = 0) {
+  constructor(seed: string, day = 0, rate = 1) {
     this.day = day;
     this.spec = CONFIG.days[day];
+    this.rate = rate;
+    this.opening = Math.round(CONFIG.arrivals.opening * rate);
     this.rng = makeRng(seed, 'shift', day);
     this.looks = makeRng(seed, 'looks', day);
   }
@@ -63,6 +66,16 @@ export class Shift {
 
   get stageSpec() {
     return CONFIG.stages[this.stage];
+  }
+
+  private get interval(): number {
+    return this.stageSpec.interval / this.rate;
+  }
+
+  // Broussais's lines for this day, raised for a busier ward.
+  get thresholds(): { approved: number; noted: number } {
+    const v = this.spec.verdict;
+    return { approved: Math.round(v.approved * this.rate), noted: Math.round(v.noted * this.rate) };
   }
 
   clockText(): string {
@@ -128,11 +141,11 @@ export class Shift {
     if (this.opening > 0) {
       this.opening--;
       out.push(this.arrival());
-      if (this.opening === 0) this.arrivalIn = this.stageSpec.interval;
+      if (this.opening === 0) this.arrivalIn = this.interval;
     } else {
       this.arrivalIn -= dt;
       if (this.arrivalIn <= 0) {
-        this.arrivalIn = this.stageSpec.interval;
+        this.arrivalIn = this.interval;
         out.push(this.arrival());
       }
     }
@@ -164,7 +177,7 @@ export class Shift {
   }
 
   verdict(): 'APPROVED' | 'NOTED' | 'REPRIMAND' {
-    const v = this.spec.verdict;
+    const v = this.thresholds;
     return this.money >= v.approved ? 'APPROVED' : this.money >= v.noted ? 'NOTED' : 'REPRIMAND';
   }
 }
