@@ -1,6 +1,8 @@
 // Every gameplay number in one place. Start generous; pressure should come from
 // overlapping tasks, not short timers. Blood is a 0–1 "drawn" meter per patient.
 
+import { YEAR_TITLE, TYPE_LABEL, COLD_LABEL } from './data/lines';
+
 export type PatientType = 'soldier' | 'anaemic' | 'drummer' | 'nervous';
 export type StageId = 'basics' | 'frail' | 'chill' | 'promotion' | 'machine' | 'drummers' | 'cholera' | 'epidemic';
 export type WardId = 'saintCome' | 'saintLouis';
@@ -10,8 +12,7 @@ export type WardId = 'saintCome' | 'saintLouis';
 // shipments slowed at the Austrian cordon (1831), cholera in Paris (1832).
 export interface DaySpec {
   year: number;
-  title: string; // shown on the title page and the report
-  when: string; // the day, in the notes ("an April morning")
+  title: string; // shown on the title page and the report (words in data/lines.ts)
   ward: WardId;
   realSeconds: number; // 8:00 to the six o'clock bell, in real seconds
   jar: number; // leeches in Madame Ricard's jar at eight
@@ -40,51 +41,48 @@ export const CONFIG = {
   days: [
     {
       year: 1828,
-      title: '1828 — the Salle Saint-Côme',
-      when: 'a February morning, 1828',
+      title: YEAR_TITLE[1828],
       ward: 'saintCome',
       realSeconds: 200,
       jar: 9,
       deliveries: { every: 24, size: 4 }, // plenty: France buys some 34 million leeches a year
       escapes: false,
       orderlies: false,
-      coldLabel: 'chilled',
+      coldLabel: COLD_LABEL[1828],
       stages: [
         { id: 'basics', at: 8 * 60 },
         { id: 'frail', at: 12 * 60 },
         { id: 'chill', at: 15 * 60 }, // the night watch in from the frost; the stove brought up
       ],
-      verdict: { approved: 125, noted: 70 },
+      verdict: { approved: 115, noted: 65 },
     },
     {
       year: 1831,
-      title: '1831 — the Salle Saint-Louis',
-      when: 'an August morning, 1831',
+      title: YEAR_TITLE[1831],
       ward: 'saintLouis',
       realSeconds: 230,
       jar: 10,
       deliveries: { every: 28, size: 4 }, // slowed: cholera in Hungary, the Austrian cordon
       escapes: true,
       orderlies: true,
-      coldLabel: 'chilled',
+      coldLabel: COLD_LABEL[1831],
       stages: [
         { id: 'promotion', at: 8 * 60 },
         { id: 'machine', at: 12 * 60 + 30 },
         { id: 'drummers', at: 15 * 60 },
       ],
-      verdict: { approved: 80, noted: 35 },
+      verdict: { approved: 70, noted: 30 },
     },
     {
       year: 1832,
-      title: '1832 — the cholera',
-      when: 'an April morning, 1832',
+      title: YEAR_TITLE[1832],
       ward: 'saintLouis',
       realSeconds: 230,
       jar: 10, // a thin jar: the bdellometer has to carry the day
       deliveries: null, // every hospital in Paris is bleeding the cholera: none to be had
       escapes: true,
       orderlies: true,
-      coldLabel: 'cholera',
+      coldLabel: COLD_LABEL[1832],
       stages: [
         { id: 'cholera', at: 8 * 60 },
         { id: 'epidemic', at: 13 * 60 },
@@ -115,10 +113,10 @@ export const CONFIG = {
     turnaround: 2, // seconds for the orderly to bring the next man to a freed bed
     // green band [start, end]; blue (warning) runs from end to faintAt
     types: {
-      soldier: { green: [0.55, 0.8], faintAt: 0.92, afterBleed: 1, label: 'Soldier' },
-      anaemic: { green: [0.42, 0.55], faintAt: 0.62, afterBleed: 1, label: 'Anaemic' },
-      drummer: { green: [0.45, 0.7], faintAt: 0.82, afterBleed: 2.5, label: 'Drummer boy' },
-      nervous: { green: [0.55, 0.8], faintAt: 0.92, afterBleed: 1, label: 'Nervous conscript' },
+      soldier: { green: [0.55, 0.8], faintAt: 0.92, afterBleed: 1, label: TYPE_LABEL.soldier },
+      anaemic: { green: [0.28, 0.36], faintAt: 0.42, afterBleed: 1, label: TYPE_LABEL.anaemic }, // frail: in the green soon, out of it sooner, and down before you know it
+      drummer: { green: [0.45, 0.7], faintAt: 0.82, afterBleed: 2.5, label: TYPE_LABEL.drummer },
+      nervous: { green: [0.55, 0.8], faintAt: 0.92, afterBleed: 1, label: TYPE_LABEL.nervous },
     } as Record<PatientType, { green: [number, number]; faintAt: number; afterBleed: number; label: string }>,
     panic: {
       rise: 0.02, // per second while the doctor is away

@@ -31,7 +31,9 @@ The design brief is `BRIEF.md`.
   slips, orderlies. Change balance here, never in logic. Historical basis:
   ~34 M leeches imported in 1827, peak ~57 M in 1832; cholera in Hungary July 1831 (Austrian
   cordon); Paris cholera spring 1832; Broussais's bleeding failed and leeching declined after.
-- `src/data/lines.ts` — every word the ward says: stage notes, verbs, failure reasons, verdicts.
+- `src/data/lines.ts` — every word the player sees: game, year, ward and patient names, the title page,
+  stage notes, prompts, failures, floating messages, pause, report, register, credits. Scenes and config
+  import from it; never write player-facing text anywhere else.
 - `src/model/` — pure logic, **no Phaser** (tests and the sim import it):
   `patient.ts` (blood meter, leeches feeding, after-bleed, chilled/warmed, panic, faint), `supply.ts`
   (jar, deliveries), `shift.ts` (one day: clock, stages, arrivals, takings), `ward.ts` (doctor movement,

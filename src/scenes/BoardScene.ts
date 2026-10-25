@@ -1,4 +1,4 @@
-// The register of the Val-de-Grâce: the best takings for each year, and for whole runs.
+// The register of the Val-de-Grâce: the best takings for each year.
 
 import Phaser from 'phaser';
 import { CONFIG } from '../config';
@@ -6,6 +6,7 @@ import { hex } from '../art/palette';
 import { sfx } from '../audio/audio';
 import { fitCamera, text, panel, STAGE } from '../ui/view';
 import { loadBoard, BOARD_SIZE, type BoardEntry } from '../ui/board';
+import { REGISTER } from '../data/lines';
 
 export class BoardScene extends Phaser.Scene {
   constructor() {
@@ -17,17 +18,14 @@ export class BoardScene extends Phaser.Scene {
     this.add.rectangle(0, 0, STAGE.w, STAGE.h, hex('ink')).setOrigin(0);
     const g = this.add.graphics();
     panel(g, 60, 36, 1160, 648, 'paper1');
-    text(this, 640, 62, 'The Register', { font: 'display', size: 46 }).setOrigin(0.5, 0);
-    text(this, 640, 122, 'The best takings in the wards of the Val-de-Grâce — kept in this browser', { size: 18, italic: true, color: 'red1' }).setOrigin(0.5, 0);
+    text(this, 640, 62, REGISTER.heading, { font: 'display', size: 46 }).setOrigin(0.5, 0);
+    text(this, 640, 122, REGISTER.subheading, { size: 18, italic: true, color: 'red1' }).setOrigin(0.5, 0);
 
     const board = loadBoard();
-    const columns: { head: string; list: BoardEntry[] }[] = [
-      ...CONFIG.days.map((d) => ({ head: String(d.year), list: board.years[String(d.year)] ?? [] })),
-      { head: 'Three years', list: board.total },
-    ];
-    const colW = 270;
+    const columns: { head: string; list: BoardEntry[] }[] = CONFIG.days.map((d) => ({ head: String(d.year), list: board.years[String(d.year)] ?? [] }));
+    const colW = 340;
     columns.forEach((c, i) => {
-      const x = 100 + i * colW;
+      const x = 130 + i * colW;
       text(this, x, 176, c.head, { font: 'display', size: 28 });
       g.fillStyle(hex('paper3')).fillRect(x, 214, colW - 30, 3);
       for (let r = 0; r < BOARD_SIZE; r++) {
@@ -43,10 +41,10 @@ export class BoardScene extends Phaser.Scene {
       }
     });
     if (!columns.some((c) => c.list.length)) {
-      text(this, 640, 400, 'No names yet. Finish a year to sign the register.', { size: 22, italic: true, color: 'wood3' }).setOrigin(0.5);
+      text(this, 640, 400, REGISTER.empty, { size: 22, italic: true, color: 'wood3' }).setOrigin(0.5);
     }
 
-    text(this, 640, 646, 'E / Space / Esc — back', { font: 'display', size: 22, color: 'red2' }).setOrigin(0.5, 0);
+    text(this, 640, 646, REGISTER.back, { font: 'display', size: 22, color: 'red2' }).setOrigin(0.5, 0);
     const back = () => {
       sfx('page');
       this.scene.start('title');

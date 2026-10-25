@@ -1,4 +1,4 @@
-// The leaderboard: the ten best takings for each year, and for whole three-year runs.
+// The leaderboard: the ten best takings for each year.
 // Kept in this browser's localStorage (the game runs without it: the board is just empty).
 
 import { CONFIG } from '../config';
@@ -17,10 +17,9 @@ export interface BoardEntry {
 
 export interface Board {
   years: Record<string, BoardEntry[]>; // keyed by year: '1828', '1831', '1832'
-  total: BoardEntry[]; // three years played in one sitting
 }
 
-const empty = (): Board => ({ years: Object.fromEntries(CONFIG.days.map((d) => [String(d.year), []])), total: [] });
+const empty = (): Board => ({ years: Object.fromEntries(CONFIG.days.map((d) => [String(d.year), []])) });
 
 export function loadBoard(): Board {
   try {
@@ -29,7 +28,6 @@ export function loadBoard(): Board {
     const b = JSON.parse(raw) as Partial<Board>;
     const fresh = empty();
     for (const y of Object.keys(fresh.years)) fresh.years[y] = (b.years?.[y] ?? []).slice(0, BOARD_SIZE);
-    fresh.total = (b.total ?? []).slice(0, BOARD_SIZE);
     return fresh;
   } catch {
     return empty();
@@ -44,8 +42,8 @@ function save(b: Board) {
   }
 }
 
-// Would this score make the board? (Ties go below earlier entries.)
-export const qualifies = (list: BoardEntry[], money: number) => list.length < BOARD_SIZE || money > list[list.length - 1].money;
+// Would this score make the board? (Ties go below earlier entries; a day with no takings never does.)
+export const qualifies = (list: BoardEntry[], money: number) => money > 0 && (list.length < BOARD_SIZE || money > list[list.length - 1].money);
 
 // Insert an entry; returns its place (0-based) or -1 if it didn't make the board.
 function place(list: BoardEntry[], e: BoardEntry): number {
@@ -60,13 +58,6 @@ function place(list: BoardEntry[], e: BoardEntry): number {
 export function signYear(year: number, e: BoardEntry): number {
   const b = loadBoard();
   const at = place(b.years[String(year)] ?? (b.years[String(year)] = []), e);
-  save(b);
-  return at;
-}
-
-export function signTotal(e: BoardEntry): number {
-  const b = loadBoard();
-  const at = place(b.total, e);
   save(b);
   return at;
 }

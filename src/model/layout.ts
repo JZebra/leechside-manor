@@ -9,6 +9,7 @@
 //                               drain                                  drain
 
 import type { WardId } from '../config';
+import { WARD_NAME } from '../data/lines';
 
 export interface Rect { x: number; y: number; w: number; h: number }
 export interface Point { x: number; y: number }
@@ -57,7 +58,7 @@ const ISLAND: Omit<Record<StationId, Station>, 'stand'> = {
 export const LAYOUTS: Record<WardId, Layout> = {
   saintCome: {
     id: 'saintCome',
-    name: 'Salle Saint-Côme',
+    name: WARD_NAME.saintCome,
     beds: [
       { x: 137, y: 28 },
       { x: 197, y: 28 },
@@ -75,7 +76,7 @@ export const LAYOUTS: Record<WardId, Layout> = {
   },
   saintLouis: {
     id: 'saintLouis',
-    name: 'Salle Saint-Louis',
+    name: WARD_NAME.saintLouis,
     beds: [
       { x: 112, y: 28 },
       { x: 170, y: 28 },

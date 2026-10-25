@@ -4,38 +4,7 @@ import Phaser from 'phaser';
 import { hex } from '../art/palette';
 import { sfx } from '../audio/audio';
 import { fitCamera, text, panel, STAGE } from '../ui/view';
-
-const SECTIONS: { head: string; lines: string[] }[] = [
-  {
-    head: 'Music',
-    lines: [
-      '“Ancient Rite” Kevin MacLeod (incompetech.com)',
-      '“Vanishing” Kevin MacLeod (incompetech.com)',
-      'Licensed under Creative Commons: By Attribution 4.0 License — http://creativecommons.org/licenses/by/4.0/',
-    ],
-  },
-  {
-    head: 'Sound effects',
-    lines: [
-      'All public domain (Creative Commons CC0); credit gladly given.',
-      'Doors, cloth and footsteps: Kenney, RPG Audio and Impact Sounds (kenney.nl)',
-      'Wet splats: Independent.nu, via qubodup — OpenGameArt',
-      'Slow heartbeat: bart · Squelches and pops: EZduzziteh · Scissors: sinny · Boiling water: TinyWorlds — OpenGameArt',
-      'Everything else synthesised in the browser with filtered noise and jsfxr.',
-    ],
-  },
-  {
-    head: 'Title plate',
-    lines: [
-      'The death of the emperor Galerius, eaten by worms. Boccaccio, Des cas des nobles hommes et femmes',
-      '(trans. Laurent de Premierfait), Paris, 3rd quarter of the 15th century. BnF, Français 127, f. 258r. Source gallica.bnf.fr / BnF.',
-    ],
-  },
-  {
-    head: 'Type',
-    lines: ['IM Fell English (Igino Marini) and EB Garamond (Georg Duffner, Octavio Pardo), SIL Open Font License.'],
-  },
-];
+import { CREDITS } from '../data/lines';
 
 export class CreditsScene extends Phaser.Scene {
   constructor() {
@@ -48,11 +17,11 @@ export class CreditsScene extends Phaser.Scene {
     const g = this.add.graphics();
     panel(g, 90, 36, 1100, 648, 'paper1');
 
-    text(this, 640, 66, 'Credits', { font: 'display', size: 46 }).setOrigin(0.5, 0);
-    text(this, 640, 130, 'Leechside Manor was developed for Ludum Dare 60 (“Old Tech”) by John Shen, using Claude AI.', { size: 21, italic: true, color: 'red1' }).setOrigin(0.5, 0);
+    text(this, 640, 66, CREDITS.heading, { font: 'display', size: 46 }).setOrigin(0.5, 0);
+    text(this, 640, 130, CREDITS.madeBy, { size: 21, italic: true, color: 'red1' }).setOrigin(0.5, 0);
 
     let y = 186;
-    for (const s of SECTIONS) {
+    for (const s of CREDITS.sections) {
       text(this, 140, y, s.head, { font: 'display', size: 24, color: 'ink' });
       y += 34;
       for (const line of s.lines) {
@@ -62,7 +31,7 @@ export class CreditsScene extends Phaser.Scene {
       y += 14;
     }
 
-    text(this, 640, 646, 'E / Space / Esc — back', { font: 'display', size: 22, color: 'red2' }).setOrigin(0.5, 0);
+    text(this, 640, 646, CREDITS.back, { font: 'display', size: 22, color: 'red2' }).setOrigin(0.5, 0);
     const back = () => {
       sfx('page');
       this.scene.start('title');

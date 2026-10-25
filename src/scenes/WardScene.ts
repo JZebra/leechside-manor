@@ -8,7 +8,7 @@ import { ensurePatientTexture, LEECH_SLOTS, SATED, escapeKey, escapeDir, handKey
 import { Ward, type WardEvent, type Target, type Hand } from '../model/ward';
 import type { Patient } from '../model/patient';
 import { BED, WORLD, type Layout, type StationId, type Rect } from '../model/layout';
-import { STAGE_NOTES, VERB, FAIL, SAY, CONTROLS, type Note } from '../data/lines';
+import { STAGE_NOTES, VERB, FAIL, SAY, CONTROLS, WARD, PAUSE, type Note } from '../data/lines';
 import { sfx, isMuted, setMuted, audioDebug } from '../audio/audio';
 import { playMusic } from '../audio/music';
 import { FLAGS } from '../flags';
@@ -154,7 +154,7 @@ export class WardScene extends Phaser.Scene {
       const s = L.stations[id];
       this.stations[id] = sprite(this, s.tex, s.box.x, s.box.y).setDepth(id === 'door' ? DEPTH.floor + 1 : DEPTH.world + s.box.y + s.box.h);
     }
-    text(this, (L.stations.door.box.x + 26) * P, 6 * P, 'To the\nconvalescents', { size: 15, italic: true, color: 'paper0', stroke: 'ink', strokeWidth: 4 })
+    text(this, (L.stations.door.box.x + 26) * P, 6 * P, WARD.doorSign, { size: 15, italic: true, color: 'paper0', stroke: 'ink', strokeWidth: 4 })
       .setDepth(DEPTH.floor + 2);
 
     L.beds.forEach((b, i) => {
@@ -195,7 +195,7 @@ export class WardScene extends Phaser.Scene {
       banner: text(this, 600, 36, '', { size: 19, color: 'paper0', stroke: 'ink', strokeWidth: 5, align: 'center' }).setOrigin(0.5).setDepth(DEPTH.hud),
       jarLabel: text(this, (jar.x + jar.w / 2) * P, (jar.y + 17.5) * P, '8', { font: 'display', size: 24 }).setOrigin(0.5).setDepth(DEPTH.world + 200),
       salt: text(this, (bucket.x + 10) * P, (bucket.y + 20) * P, '', { size: 14, italic: true, color: 'linen1', stroke: 'ink', strokeWidth: 4, align: 'center' }).setOrigin(0.5, 0).setDepth(DEPTH.overlay),
-      queue: text(this, 6 * P, 30 * P, 'At the door', { size: 15, italic: true, color: 'paper0', stroke: 'ink', strokeWidth: 4 }).setDepth(DEPTH.overlay),
+      queue: text(this, 6 * P, 30 * P, WARD.queue, { size: 15, italic: true, color: 'paper0', stroke: 'ink', strokeWidth: 4 }).setDepth(DEPTH.overlay),
       mute: text(this, 1262, 72, '', { size: 14, italic: true, color: 'paper2', stroke: 'ink', strokeWidth: 3 }).setOrigin(1, 0).setDepth(DEPTH.hud),
     };
     sprite(this, 'item:leech', 1176 / P, 25 / P).setDepth(DEPTH.hud);
@@ -341,10 +341,10 @@ export class WardScene extends Phaser.Scene {
           break;
         case 'stoveArrives':
           sfx('door');
-          this.sayAt(this.L.stations.stove.box, 'The stove is brought up', 'info');
+          this.sayAt(this.L.stations.stove.box, SAY.stoveArrives, 'info');
           break;
         case 'deviceArrives':
-          this.sayAt(this.L.stations.stand.box, 'The bdellometer has come', 'info');
+          this.sayAt(this.L.stations.stand.box, SAY.deviceArrives, 'info');
           break;
         case 'arrive':
           sfx('door', { minGap: 0.3 });
@@ -373,7 +373,7 @@ export class WardScene extends Phaser.Scene {
           break;
         case 'warm':
           sfx('pour');
-          this.sayAt(this.ward.bedRect(e.bed), 'Warmed — the leeches will take now', 'good');
+          this.sayAt(this.ward.bedRect(e.bed), SAY.warmed, 'good');
           break;
         case 'leechDone':
           sfx('plip');
@@ -401,14 +401,14 @@ export class WardScene extends Phaser.Scene {
           break;
         case 'deliver':
           sfx('doorClose');
-          this.sayAt(this.L.stations.door.box, 'To the convalescents', 'info');
+          this.sayAt(this.L.stations.door.box, SAY.delivered, 'info');
           break;
         case 'scoop':
           sfx('scoop');
           break;
         case 'salt':
           sfx('salt');
-          this.sayAt(this.L.stations.bucket.box, `Salted ${e.count}`, 'info');
+          this.sayAt(this.L.stations.bucket.box, SAY.salted(e.count), 'info');
           break;
         case 'recycled':
           sfx('delivery');
@@ -439,7 +439,7 @@ export class WardScene extends Phaser.Scene {
           sfx('slipSplat');
           sfx('slip');
           sfx('thud');
-          this.say(`${SAY.slip}  ${e.fee} fr${e.spilled ? ` — ${e.spilled} spilled` : ''}`, ward.doctor.x, ward.doctor.y - 26, 'bad');
+          this.say(`${SAY.slip}  ${e.fee} fr${e.spilled ? SAY.spilled(e.spilled) : ''}`, ward.doctor.x, ward.doctor.y - 26, 'bad');
           break;
         case 'collide':
           sfx('thud');
@@ -491,7 +491,7 @@ export class WardScene extends Phaser.Scene {
 
   // ── Notes, pause, the bell ────────────────────────────────────────────────
 
-  private showNote(note: Note, footer = 'E / Space — back to the ward') {
+  private showNote(note: Note, footer = WARD.noteFooter) {
     sfx('page');
     const c = this.add.container(0, 0).setDepth(DEPTH.note);
     c.add(this.add.tileSprite(0, 0, STAGE.w / P, STAGE.h / P, 'dither').setOrigin(0).setScale(P));
@@ -544,13 +544,13 @@ export class WardScene extends Phaser.Scene {
     // how far behind the sound is, as the browser reports it (Bluetooth adds a great deal)
     const ctx = audioDebug().ctx;
     const ms = (x: number | undefined) => (x == null ? '?' : `${Math.round(x * 1000)} ms`);
-    const latency = ctx ? `Sound: ${ms(ctx.baseLatency)} in the browser, ${ms(ctx.outputLatency)} to your speakers.` : 'Sound: not started yet.';
+    const latency = ctx ? PAUSE.latency(ms(ctx.baseLatency), ms(ctx.outputLatency)) : PAUSE.latencyNone;
     this.showNote({
-      speaker: 'The clock has stopped',
-      title: 'Paused',
-      body: [`${this.ward.day.title}, ${this.ward.shift.clockText()} — ${this.ward.shift.money} francs so far.`, latency],
-      hint: 'R: start the day again   ·   T: the title page   ·   M: sound on or off',
-    }, 'E / Space / Esc — carry on');
+      speaker: PAUSE.speaker,
+      title: PAUSE.title,
+      body: [PAUSE.status(this.ward.day.title, this.ward.shift.clockText(), this.ward.shift.money), latency],
+      hint: PAUSE.keys,
+    }, PAUSE.footer);
   }
 
   private endShift() {
@@ -577,15 +577,15 @@ export class WardScene extends Phaser.Scene {
     this.hud.money.setText(`${ward.shift.money} fr`);
     this.hud.jar.setText(String(s.jar));
     this.hud.jarLabel.setText(String(s.jar));
-    this.hud.mute.setText(isMuted() ? 'sound off (M)' : '');
+    this.hud.mute.setText(isMuted() ? WARD.soundOff : '');
     const secs = (n: number) => `${Math.max(0, Math.ceil(n))} s`;
     let banner = '';
-    if (!s.deliveries) banner = 'Not a leech to be bought — salt the fed ones and reuse them';
-    else if (s.jar < CONFIG.supply.cap) banner = `Next jar of leeches in ${secs(s.nextDelivery)}`;
+    if (!s.deliveries) banner = WARD.noDeliveries;
+    else if (s.jar < CONFIG.supply.cap) banner = WARD.nextJar(secs(s.nextDelivery));
     this.hud.banner.setText(banner).setColor(s.deliveries ? '#ecdfc0' : '#c8483a');
     const salting = ward.salting.reduce((n, x) => n + x.count, 0);
     const back = ward.salting.length ? Math.min(...ward.salting.map((x) => x.left)) : 0;
-    this.hud.salt.setText(salting ? `${salting} disgorging\nback in ${secs(back)}` : '');
+    this.hud.salt.setText(salting ? WARD.salting(salting, secs(back)) : '');
     void t;
   }
 
@@ -672,10 +672,14 @@ export class WardScene extends Phaser.Scene {
 
   // The blood bar: red (not yet), green (just right), blue (too much). Bands lit up to
   // the blood drawn; a dotted ghost shows where the leeches already on him will take him.
+  // Every bar is on one scale (the hardiest man's faint at full width), so a frail man's bar is
+  // visibly short: his red and green end early, and past his faint the bar is dark.
   private drawMeter(g: Phaser.GameObjects.Graphics, ax: number, ay: number, w: number, p: Patient) {
     const spec = p.spec;
     const full = spec.faintAt;
-    const px = (v: number) => Math.round((Math.min(v, full) / full) * w);
+    const scale = Math.max(...Object.values(CONFIG.patient.types).map((t) => t.faintAt));
+    const px = (v: number) => Math.round((Math.min(v, full) / scale) * w);
+    const end = px(full); // where he faints
     const h = 3;
     g.fillStyle(hex('ink')).fillRect((ax - 1) * P, (ay - 1) * P, (w + 2) * P, (h + 2) * P);
     const b = px(p.blood);
@@ -688,14 +692,15 @@ export class WardScene extends Phaser.Scene {
     };
     seg(0, g0, 'red1', 'red3');
     seg(g0, g1, 'green1', 'meterGreen1');
-    seg(g1, w, 'navy1', 'meterBlue1');
+    seg(g1, end, 'navy1', 'meterBlue1');
+    if (end < w) g.fillStyle(hex('red0')).fillRect((ax + end) * P, (ay - 1) * P, P, (h + 2) * P); // the faint line
     // the ghost of what the attached leeches will still draw
     const owed = p.leeches.reduce((s, l) => s + (l ? (1 - l.fed) * CONFIG.leech.feedSeconds * CONFIG.leech.extraction : 0), 0);
     const proj = px(p.blood + owed);
     g.fillStyle(hex('linen0'));
     for (let i = b; i < proj; i++) for (let j = 0; j < h; j++) if ((i + j) % 2 === 0) g.fillRect((ax + i) * P, (ay + j) * P, P, P);
     // the marker
-    g.fillStyle(hex('linen0')).fillRect((ax + Math.min(b, w - 1)) * P, (ay - 1) * P, P, (h + 2) * P);
+    g.fillStyle(hex('linen0')).fillRect((ax + Math.min(b, end - 1)) * P, (ay - 1) * P, P, (h + 2) * P);
 
     // patience (untouched, waiting) or panic (nervous) under the bar
     let under: { share: number; c: PaletteKey } | null = null;
@@ -825,7 +830,7 @@ export class WardScene extends Phaser.Scene {
         g.fillRect(sx > 0 ? cx : cx - (L - 1) * P, cy, L * P, P);
         g.fillRect(cx, sy > 0 ? cy : cy - (L - 1) * P, P, L * P);
       }
-      label = tg.check.verb === 'pump' ? (this.pumpBed != null ? 'Pumping…' : `${VERB.pump} E`) : `E  ${VERB[tg.check.verb]}`;
+      label = tg.check.verb === 'pump' ? (this.pumpBed != null ? WARD.pumping : WARD.hold(VERB.pump)) : WARD.press(VERB[tg.check.verb]);
     }
     const lift = ward.hand && ward.hand.kind !== 'stretcher' && this.pumpBed == null ? this.carry.frame.height : 0;
     this.prompt.setText(label).setPosition(Math.round(d.x) * P, (Math.round(d.y) - 25 - lift) * P);
@@ -858,7 +863,7 @@ export class WardScene extends Phaser.Scene {
       g.fillStyle(hex('ink')).fillRect(5 * P, (ay - 1) * P, 24 * P, 3 * P);
       g.fillStyle(hex(e.left < 12 ? 'red3' : 'paper2')).fillRect(6 * P, ay * P, Math.round(share * 22) * P, P);
       const kind = e.type === 'soldier' ? '' : `, ${CONFIG.patient.types[e.type].label.toLowerCase()}`;
-      const left = e.left < 12 ? '  (leaving!)' : '';
+      const left = e.left < 12 ? `  ${WARD.leaving}` : '';
       v.name.setText(`${e.profile.surname}${kind}${left}`).setColor(e.left < 12 ? '#c8483a' : '#ddd6c4');
     });
   }

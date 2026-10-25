@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { loadBoard, signYear, signTotal, qualifies, BOARD_SIZE, ordinal } from '../src/ui/board';
+import { loadBoard, signYear, qualifies, BOARD_SIZE, ordinal } from '../src/ui/board';
 
 // a stand-in for the browser's localStorage
 beforeEach(() => {
@@ -25,15 +25,14 @@ describe('the leaderboard', () => {
     expect(list.at(-1)!.money).toBe(20);
     expect(signYear(1828, entry('tie', 110))).toBe(1); // equal to the best: placed second
     expect(qualifies(loadBoard().years['1828'], 10)).toBe(false);
+    expect(qualifies([], 0)).toBe(false); // an empty board still wants takings
   });
 
-  it('years and three-year runs are separate boards', () => {
+  it('each year has its own board', () => {
     expect(signYear(1831, entry('a', 50))).toBe(0);
-    expect(signTotal(entry('a', 140))).toBe(0);
     const b = loadBoard();
     expect(b.years['1828']).toHaveLength(0);
     expect(b.years['1831'][0].name).toBe('a');
-    expect(b.total[0].money).toBe(140);
   });
 
   it('runs without storage: an empty board, nothing thrown', () => {
@@ -41,7 +40,7 @@ describe('the leaderboard', () => {
       getItem: () => { throw new Error('denied'); },
       setItem: () => { throw new Error('denied'); },
     };
-    expect(loadBoard().total).toEqual([]);
+    expect(loadBoard().years['1832']).toEqual([]);
     expect(() => signYear(1832, entry('x', 1))).not.toThrow();
   });
 

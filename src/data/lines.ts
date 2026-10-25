@@ -1,7 +1,57 @@
-// Everything the ward says. Notes arrive in period voice; prompts and failures
-// are short enough to read over a moving doctor.
+// Every word the player sees, in one place: names, the title page, the stage notes, the
+// ward's prompts and messages, the pause screen, the day's report, the register, the credits.
+// Notes are in period voice; prompts and failures are short enough to read over a moving doctor.
+// Edit freely — nothing here is logic. (Functions are for text with numbers or names in it.)
 
 import type { StageId } from '../config';
+
+// ── Names ────────────────────────────────────────────────────────────────────
+
+export const GAME_TITLE = 'Leechside Manor';
+
+export const YEAR_TITLE: Record<number, string> = {
+  1828: '1828 — the Salle Saint-Côme',
+  1831: '1831 — the Salle Saint-Louis',
+  1832: '1832 — the cholera',
+};
+
+export const WARD_NAME = {
+  saintCome: 'Salle Saint-Côme',
+  saintLouis: 'Salle Saint-Louis',
+};
+
+// Shown under a man's name in the ward and in the report.
+export const TYPE_LABEL = {
+  soldier: 'Soldier',
+  anaemic: 'Anaemic',
+  drummer: 'Drummer boy',
+  nervous: 'Nervous conscript',
+};
+
+// What the cold, blue men are called each year.
+export const COLD_LABEL: Record<number, string> = {
+  1828: 'chilled',
+  1831: 'chilled',
+  1832: 'cholera',
+};
+
+// ── The title page ───────────────────────────────────────────────────────────
+
+export const TITLE = {
+  subtitle: 'Val-de-Grâce, Paris · three years under Broussais, 1828–1832',
+  intro:
+    'Broussais orders thirty leeches for every man, France buys them by the tens of millions, and you are his house physician. ' +
+    'Bleed each soldier just enough — into the green — then press lint on the bites. ' +
+    'Carry out the fainted, salt the fed leeches, mind your footing — and then the cholera comes.',
+  plateCaption: '“Le ixe chapitre contient le cas de Galerius … empereur des Rommains.”',
+  begin: (year: number) => `Press E or Space to begin ${year}`,
+  best: (francs: number) => `best ${francs} fr`,
+  locked: 'not yet',
+  soundOn: 'Sound on (M)',
+  soundOff: 'Sound off (M)',
+  menu: 'L — Leaderboard   ·   C — Credits',
+  byline: 'Ludum Dare 60 · John Shen',
+};
 
 export interface Note {
   speaker: string;
@@ -25,7 +75,7 @@ export const STAGE_NOTES: Record<StageId, Note> = {
     body: [
       '“They are bringing up the men from the fever ward, Monsieur. Mind the white-faced ones: they drop like sacks.”',
     ],
-    hint: 'Anaemic men (ashen faces) have a narrow green and faint soon after it (Prop. 268). One leech and patience — their bites keep bleeding.',
+    hint: 'Anaemic men (ashen faces) have little blood to spare: a short bar, a narrow green, and they faint soon after it (Prop. 268). One leech and patience — their bites keep bleeding.',
   },
   chill: {
     speaker: 'Sister Marthe',
@@ -78,6 +128,7 @@ export const STAGE_NOTES: Record<StageId, Note> = {
   },
 };
 
+// On the title page (one line per ·) and in the first note.
 export const CONTROLS = 'WASD / arrows: walk (Shift: run)  ·  E / Space: take, give, apply (hold to pump)  ·  Esc: pause  ·  M: mute';
 
 export const VERB = {
@@ -133,9 +184,121 @@ export const SAY = {
   delivery: (n: number) => `+${n} leeches`,
   recycled: (n: number) => `${n} back in the jar`,
   slip: 'Slipped on a leech!',
+  spilled: (count: number) => ` — ${count} spilled`,
+  stoveArrives: 'The stove is brought up',
+  deviceArrives: 'The bdellometer has come',
+  warmed: 'Warmed — the leeches will take now',
+  delivered: 'To the convalescents',
+  salted: (count: number) => `Salted ${count}`,
   jostle: 'Pardon, Monsieur!',
   collide: 'Ran into an orderly!',
   bell: 'The six o’clock bell',
+};
+
+// ── The ward ─────────────────────────────────────────────────────────────────
+
+export const WARD = {
+  doorSign: 'To the\nconvalescents',
+  queue: 'At the door',
+  leaving: '(leaving!)', // after the name of a man about to give up waiting
+  noDeliveries: 'Not a leech to be bought — salt the fed ones and reuse them',
+  nextJar: (inSeconds: string) => `Next jar of leeches in ${inSeconds}`,
+  salting: (count: number, inSeconds: string) => `${count} disgorging\nback in ${inSeconds}`,
+  soundOff: 'sound off (M)',
+  press: (verb: string) => `E  ${verb}`, // the prompt over the doctor's head
+  hold: (verb: string) => `${verb} E`, // …for the bdellometer
+  pumping: 'Pumping…',
+  noteFooter: 'E / Space — back to the ward',
+};
+
+export const PAUSE = {
+  speaker: 'The clock has stopped',
+  title: 'Paused',
+  status: (day: string, clock: string, francs: number) => `${day}, ${clock} — ${francs} francs so far.`,
+  latency: (browser: string, speakers: string) => `Sound: ${browser} in the browser, ${speakers} to your speakers.`,
+  latencyNone: 'Sound: not started yet.',
+  keys: 'R: start the day again   ·   T: the title page   ·   M: sound on or off',
+  footer: 'E / Space / Esc — carry on',
+};
+
+// ── The day's report ─────────────────────────────────────────────────────────
+
+export const REPORT = {
+  heading: (ward: string) => `${ward} — the day’s report`,
+  subheading: (year: number) => `${year} · Val-de-Grâce military hospital · for the attention of the Physician-in-Chief`,
+  nobody: 'Not a man treated.',
+  more: (count: number) => `… and ${count} more`,
+  green: 'Bled just right',
+  earlyLate: 'Stopped early or late',
+  faint: 'Fainted',
+  walkedOut: 'Gave up waiting',
+  applied: 'Leeches applied',
+  lost: 'Leeches lost',
+  squashed: (count: number) => ` (${count} squashed underfoot)`,
+  floor: 'Fed leeches left on the floor',
+  takings: (francs: number) => `Takings: ${francs} francs`,
+  thresholds: (approved: number, noted: number) => `Approved at ${approved} fr · noted at ${noted} fr`,
+  newBest: 'a new best for this day',
+  stamp: { APPROVED: 'APPROVED', NOTED: 'NOTED', REPRIMAND: 'REPRIMAND' } as Record<string, string>,
+  signature: '— F.-J.-V. Broussais',
+  threeYears: (francs: number) => `Your three years: ${francs} francs.`,
+  next: (title: string) => `E / Space — ${title}`,
+  toTitle: 'E / Space — the title page',
+  retry: 'R — this day again',
+  title: 'T — title',
+};
+
+// ── The register (leaderboard) ───────────────────────────────────────────────
+
+export const REGISTER = {
+  prompt: (year: number) => `A place on the ${year} board! Sign the register:`,
+  keys: 'Enter — sign   ·   Esc — leave it',
+  unsigned: 'Left unsigned',
+  signed: (place: string, year: number) => `Signed — ${place} for ${year}`,
+  anonymous: 'Anonymous',
+  heading: 'The Register',
+  subheading: 'The best takings in the wards of the Val-de-Grâce — kept in this browser',
+  empty: 'No names yet. Finish a year to sign the register.',
+  back: 'E / Space / Esc — back',
+};
+
+// ── Credits ──────────────────────────────────────────────────────────────────
+
+export const CREDITS = {
+  heading: 'Credits',
+  madeBy: `${GAME_TITLE} was developed for Ludum Dare 60 (“Old Tech”) by John Shen, using Claude AI.`,
+  sections: [
+    {
+      head: 'Music',
+      lines: [
+        '“Ancient Rite” Kevin MacLeod (incompetech.com)',
+        '“Vanishing” Kevin MacLeod (incompetech.com)',
+        'Licensed under Creative Commons: By Attribution 4.0 License — http://creativecommons.org/licenses/by/4.0/',
+      ],
+    },
+    {
+      head: 'Sound effects',
+      lines: [
+        'All public domain (Creative Commons CC0); credit gladly given.',
+        'Doors, cloth and footsteps: Kenney, RPG Audio and Impact Sounds (kenney.nl)',
+        'Wet splats: Independent.nu, via qubodup — OpenGameArt',
+        'Slow heartbeat: bart · Squelches and pops: EZduzziteh · Scissors: sinny · Boiling water: TinyWorlds — OpenGameArt',
+        'Everything else synthesised in the browser with filtered noise and jsfxr.',
+      ],
+    },
+    {
+      head: 'Title plate',
+      lines: [
+        'The death of the emperor Galerius, eaten by worms. Boccaccio, Des cas des nobles hommes et femmes',
+        '(trans. Laurent de Premierfait), Paris, 3rd quarter of the 15th century. BnF, Français 127, f. 258r. Source gallica.bnf.fr / BnF.',
+      ],
+    },
+    {
+      head: 'Type',
+      lines: ['IM Fell English (Igino Marini) and EB Garamond (Georg Duffner, Octavio Pardo), SIL Open Font License.'],
+    },
+  ],
+  back: 'E / Space / Esc — back',
 };
 
 export const VERDICT_REMARK = {

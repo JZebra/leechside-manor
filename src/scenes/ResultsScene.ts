@@ -4,12 +4,12 @@
 import Phaser from 'phaser';
 import { CONFIG } from '../config';
 import { hex, type PaletteKey } from '../art/palette';
-import { OUTCOME_LABEL, VERDICT_REMARK, FINAL_REMARK } from '../data/lines';
+import { OUTCOME_LABEL, VERDICT_REMARK, FINAL_REMARK, REPORT, REGISTER, TYPE_LABEL } from '../data/lines';
 import type { Ward } from '../model/ward';
 import { sfx } from '../audio/audio';
 import { fitCamera, text, panel, STAGE } from '../ui/view';
 import { finishDay } from '../ui/progress';
-import { loadBoard, qualifies, signYear, signTotal, lastName, rememberName, today, ordinal, NAME_MAX } from '../ui/board';
+import { loadBoard, qualifies, signYear, lastName, rememberName, today, ordinal, NAME_MAX } from '../ui/board';
 
 const OUTCOME_COLOUR: Record<string, PaletteKey> = {
   green: 'stamp0',
@@ -46,8 +46,8 @@ export class ResultsScene extends Phaser.Scene {
     this.registry.set('run', run);
     const record = finishDay(day, shift.money);
 
-    text(this, 100, 62, `${ward.layout.name} — the day’s report`, { font: 'display', size: 40 });
-    text(this, 102, 112, `${shift.spec.title.replace(/ —.*/, '')} · Val-de-Grâce military hospital · for the attention of the Physician-in-Chief`, { size: 18, italic: true, color: 'red1' });
+    text(this, 100, 62, REPORT.heading(ward.layout.name), { font: 'display', size: 40 });
+    text(this, 102, 112, REPORT.subheading(shift.spec.year), { size: 18, italic: true, color: 'red1' });
 
     // the patients, in two columns
     const log = shift.log;
@@ -56,36 +56,36 @@ export class ResultsScene extends Phaser.Scene {
       const col = Math.floor(i / perCol);
       const x = 100 + col * 400;
       const y = 156 + (i % perCol) * 30;
-      const kind = e.type === 'anaemic' || e.type === 'nervous' ? ` (${e.type})` : ''; // drummers say so in their rank
+      const kind = e.type === 'anaemic' || e.type === 'nervous' ? ` (${TYPE_LABEL[e.type].toLowerCase()})` : ''; // drummers say so in their rank
       text(this, x, y, `${e.profile.rank} ${e.profile.surname}${kind}`, { size: 18 });
       text(this, x + 220, y + 1, OUTCOME_LABEL[e.outcome] ?? e.outcome, { size: 16, italic: true, color: OUTCOME_COLOUR[e.outcome] ?? 'wood3' });
       if (e.fee) text(this, x + 385, y, `${e.fee > 0 ? '+' : ''}${e.fee}`, { size: 18, color: e.fee > 0 ? 'ink' : 'red2' }).setOrigin(1, 0);
     });
-    if (log.length > perCol * 2) text(this, 100, 156 + perCol * 30, `… and ${log.length - perCol * 2} more`, { size: 16, italic: true, color: 'wood3' });
-    if (!log.length) text(this, 100, 156, 'Not a man treated.', { size: 20, italic: true });
+    if (log.length > perCol * 2) text(this, 100, 156 + perCol * 30, REPORT.more(log.length - perCol * 2), { size: 16, italic: true, color: 'wood3' });
+    if (!log.length) text(this, 100, 156, REPORT.nobody, { size: 20, italic: true });
 
     // the sums
     const counts = (o: string) => log.filter((e) => e.outcome === o).length;
     const lines = [
-      `Bled just right: ${counts('green')}`,
-      `Stopped early or late: ${counts('early') + counts('late')}`,
-      `Fainted: ${counts('faint')}`,
-      `Gave up waiting: ${counts('walkedOut')}`,
-      `Leeches applied: ${ward.applied}`,
-      `Leeches lost: ${ward.lost}${ward.slips ? ` (${ward.slips} squashed underfoot)` : ''}`,
-      `Fed leeches left on the floor: ${ward.floorAtBell}`,
+      `${REPORT.green}: ${counts('green')}`,
+      `${REPORT.earlyLate}: ${counts('early') + counts('late')}`,
+      `${REPORT.faint}: ${counts('faint')}`,
+      `${REPORT.walkedOut}: ${counts('walkedOut')}`,
+      `${REPORT.applied}: ${ward.applied}`,
+      `${REPORT.lost}: ${ward.lost}${ward.slips ? REPORT.squashed(ward.slips) : ''}`,
+      `${REPORT.floor}: ${ward.floorAtBell}`,
     ];
     text(this, 920, 156, lines.join('\n'), { size: 18, lineSpacing: 6 });
-    text(this, 920, 372, `Takings: ${shift.money} francs`, { font: 'display', size: 30, color: shift.money >= 0 ? 'ink' : 'red2' });
+    text(this, 920, 372, REPORT.takings(shift.money), { font: 'display', size: 30, color: shift.money >= 0 ? 'ink' : 'red2' });
     const v = shift.spec.verdict;
-    if (record) text(this, 1196, 344, 'a new best for this day', { size: 16, italic: true, color: 'red2' }).setOrigin(1, 0);
-    text(this, 922, 412, `Approved at ${v.approved} fr · noted at ${v.noted} fr`, { size: 15, italic: true, color: 'wood3' });
+    if (record) text(this, 1196, 344, REPORT.newBest, { size: 16, italic: true, color: 'red2' }).setOrigin(1, 0);
+    text(this, 922, 412, REPORT.thresholds(v.approved, v.noted), { size: 15, italic: true, color: 'wood3' });
 
     // Broussais's stamp, thumped down in steps
     const verdict = shift.verdict();
     const ink: PaletteKey = verdict === 'APPROVED' ? 'stamp0' : 'red2';
     const stamp = this.add.container(1060, 510);
-    const word = text(this, 0, 2, verdict, { font: 'display', size: 44, color: ink }).setOrigin(0.5);
+    const word = text(this, 0, 2, REPORT.stamp[verdict] ?? verdict, { font: 'display', size: 44, color: ink }).setOrigin(0.5);
     const sg = this.add.graphics();
     const sw = Math.ceil((word.width + 60) / 6) * 6, sh = 84;
     sg.fillStyle(hex(ink)).fillRect(-sw / 2, -sh / 2, sw, sh);
@@ -97,18 +97,18 @@ export class ResultsScene extends Phaser.Scene {
     stamp.setScale(1.6).setVisible(false);
     const total = run.reduce((a, b) => a + (b ?? 0), 0);
     const remark = last && run.filter((x) => x != null).length === CONFIG.days.length
-      ? `${FINAL_REMARK} Your three years: ${total} francs.`
+      ? `${FINAL_REMARK} ${REPORT.threeYears(total)}`
       : VERDICT_REMARK[verdict];
     text(this, 920, 572, remark, { size: 18, italic: true, wrap: 280, color: 'wood2' });
-    text(this, 1196, 648, '— F.-J.-V. Broussais', { size: 16, italic: true, color: 'wood3' }).setOrigin(1, 0);
+    text(this, 1196, 648, REPORT.signature, { size: 16, italic: true, color: 'wood3' }).setOrigin(1, 0);
 
     this.time.delayedCall(700, () => {
       stamp.setVisible(true);
       this.tweens.add({ targets: stamp, scale: 1, duration: 160, ease: 'Stepped', easeParams: [3], onComplete: () => sfx('stamp') });
     });
 
-    const next = last ? 'E / Space — the title page' : `E / Space — ${CONFIG.days[day + 1].title}`;
-    const footer = text(this, 100, 648, `${next}   ·   R — this day again   ·   T — title`, { font: 'display', size: 22, color: 'red2' });
+    const next = last ? REPORT.toTitle : REPORT.next(CONFIG.days[day + 1].title);
+    const footer = text(this, 100, 648, `${next}   ·   ${REPORT.retry}   ·   ${REPORT.title}`, { font: 'display', size: 22, color: 'red2' });
     const kb = this.input.keyboard!;
     const idle = () => this.entering || this.time.now - this.signedAt < 300; // the Enter that signs mustn't also leave
     const go = () => {
@@ -125,25 +125,20 @@ export class ResultsScene extends Phaser.Scene {
       kb.on('keydown-T', () => !idle() && this.scene.start('title'));
     });
 
-    // the leaderboard: sign for this year's top ten, and for the three years if it was a full run
-    const board = loadBoard();
+    // the leaderboard: sign for this year's top ten
     const year = shift.spec.year;
-    const fullRun = last && run.filter((x) => x != null).length === CONFIG.days.length;
-    const yearQ = qualifies(board.years[String(year)] ?? [], shift.money);
-    const totalQ = fullRun && qualifies(board.total, total);
-    if (yearQ || totalQ) this.signing(year, shift.money, verdict, totalQ ? total : null, footer);
+    if (qualifies(loadBoard().years[String(year)] ?? [], shift.money)) this.signing(year, shift.money, verdict, footer);
   }
 
   // A place on the board: type a name (Enter signs, Esc leaves it unsigned).
-  private signing(year: number, money: number, verdict: string, total: number | null, footer: Phaser.GameObjects.Text) {
+  private signing(year: number, money: number, verdict: string, footer: Phaser.GameObjects.Text) {
     this.entering = true;
     footer.setAlpha(0.35);
     const g = this.add.graphics();
     panel(g, 100, 566, 760, 66, 'paper0');
-    const what = total != null ? `this year and for the three years` : `the ${year} board`;
-    text(this, 118, 574, `A place on ${what}! Sign the register:`, { size: 18, italic: true, color: 'red1' });
+    text(this, 118, 574, REGISTER.prompt(year), { size: 18, italic: true, color: 'red1' });
     const field = text(this, 118, 598, '', { font: 'display', size: 24, color: 'ink' });
-    const hint = text(this, 842, 604, 'Enter — sign   ·   Esc — leave it', { size: 15, italic: true, color: 'wood3' }).setOrigin(1, 0);
+    const hint = text(this, 842, 604, REGISTER.keys, { size: 15, italic: true, color: 'wood3' }).setOrigin(1, 0);
     let name = lastName().slice(0, NAME_MAX);
     let blink = true;
     const draw = () => field.setText(`${name}${this.entering && blink ? '_' : ''}`);
@@ -156,21 +151,16 @@ export class ResultsScene extends Phaser.Scene {
       footer.setAlpha(1);
       if (!signed) {
         draw();
-        hint.setText('Left unsigned');
+        hint.setText(REGISTER.unsigned);
         return;
       }
-      const who = name.trim() || 'Anonymous';
+      const who = name.trim() || REGISTER.anonymous;
       rememberName(who);
       const entry = { name: who, money, verdict, date: today() };
       const at = signYear(year, entry);
-      const parts = at >= 0 ? [`${ordinal(at + 1)} for ${year}`] : [];
-      if (total != null) {
-        const t = signTotal({ ...entry, money: total, verdict: '' });
-        if (t >= 0) parts.push(`${ordinal(t + 1)} for the three years`);
-      }
       name = who;
       draw();
-      hint.setText(`Signed — ${parts.join(', ')}`).setColor('#2e4a2c');
+      hint.setText(at >= 0 ? REGISTER.signed(ordinal(at + 1), year) : REGISTER.unsigned).setColor('#2e4a2c');
       sfx('scratch');
     };
     this.input.keyboard!.on('keydown', (e: KeyboardEvent) => {
