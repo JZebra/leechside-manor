@@ -5,7 +5,7 @@ import { CONFIG } from '../config';
 import { hex } from '../art/palette';
 import { sfx } from '../audio/audio';
 import { fitCamera, text, panel, STAGE } from '../ui/view';
-import { loadBoard, BOARD_SIZE, type BoardEntry } from '../ui/board';
+import { loadBoard, BOARD_SIZE } from '../ui/board';
 import { REGISTER } from '../data/lines';
 
 export class BoardScene extends Phaser.Scene {
@@ -22,7 +22,7 @@ export class BoardScene extends Phaser.Scene {
     text(this, 640, 122, REGISTER.subheading, { size: 18, italic: true, color: 'red1' }).setOrigin(0.5, 0);
 
     const board = loadBoard();
-    const columns: { head: string; list: BoardEntry[] }[] = CONFIG.days.map((d) => ({ head: String(d.year), list: board.years[String(d.year)] ?? [] }));
+    const columns = CONFIG.days.map((d) => ({ head: String(d.year), list: board.years[String(d.year)] ?? [] }));
     const colW = 340;
     columns.forEach((c, i) => {
       const x = 130 + i * colW;

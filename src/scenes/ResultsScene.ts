@@ -4,7 +4,7 @@
 import Phaser from 'phaser';
 import { CONFIG } from '../config';
 import { hex, type PaletteKey } from '../art/palette';
-import { OUTCOME_LABEL, VERDICT_REMARK, REPORT, REGISTER, TYPE_LABEL } from '../data/lines';
+import { OUTCOME_LABEL, VERDICT_REMARK, REPORT, REGISTER } from '../data/lines';
 import type { Ward } from '../model/ward';
 import { sfx } from '../audio/audio';
 import { fitCamera, text, panel, STAGE } from '../ui/view';
@@ -56,7 +56,7 @@ export class ResultsScene extends Phaser.Scene {
       const col = Math.floor(i / perCol);
       const x = 100 + col * 400;
       const y = 156 + (i % perCol) * 30;
-      const kind = e.type === 'anemic' || e.type === 'nervous' ? ` (${TYPE_LABEL[e.type].toLowerCase()})` : ''; // drummers say so in their rank
+      const kind = REPORT.kind[e.type] ? ` ${REPORT.kind[e.type]}` : '';
       text(this, x, y, `${e.profile.rank} ${e.profile.surname}${kind}`, { size: 18 });
       text(this, x + 220, y + 1, OUTCOME_LABEL[e.outcome] ?? e.outcome, { size: 16, italic: true, color: OUTCOME_COLOUR[e.outcome] ?? 'wood3' });
       if (e.fee) text(this, x + 385, y, `${e.fee > 0 ? '+' : ''}${e.fee}`, { size: 18, color: e.fee > 0 ? 'ink' : 'red2' }).setOrigin(1, 0);
@@ -85,7 +85,7 @@ export class ResultsScene extends Phaser.Scene {
     const verdict = shift.verdict();
     const ink: PaletteKey = verdict === 'APPROVED' ? 'stamp0' : 'red2';
     const stamp = this.add.container(1060, 510);
-    const word = text(this, 0, 2, REPORT.stamp[verdict] ?? verdict, { font: 'display', size: 44, color: ink }).setOrigin(0.5);
+    const word = text(this, 0, 2, REPORT.stamp[verdict], { font: 'display', size: 44, color: ink }).setOrigin(0.5);
     const sg = this.add.graphics();
     const sw = Math.ceil((word.width + 60) / 6) * 6, sh = 84;
     sg.fillStyle(hex(ink)).fillRect(-sw / 2, -sh / 2, sw, sh);

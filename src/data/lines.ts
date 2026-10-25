@@ -3,7 +3,7 @@
 // Notes are in period voice; prompts and failures are short enough to read over a moving doctor.
 // Edit freely — nothing here is logic. (Functions are for text with numbers or names in it.)
 
-import type { StageId } from '../config';
+import type { StageId, PatientType } from '../config';
 
 // ── Names ────────────────────────────────────────────────────────────────────
 
@@ -227,6 +227,7 @@ export const REPORT = {
   subheading: (year: number) => `${year} · Val-de-Grâce military hospital · for the attention of the Physician-in-Chief`,
   nobody: 'Not a man treated.',
   more: (count: number) => `… and ${count} more`,
+  kind: { anemic: '(anemic)', nervous: '(nervous)' } as Partial<Record<PatientType, string>>, // after a man's name; drummers say so in their rank
   green: 'Bled just right',
   earlyLate: 'Stopped early or late',
   faint: 'Fainted',
@@ -238,7 +239,7 @@ export const REPORT = {
   takings: (francs: number) => `Takings: ${francs} francs`,
   thresholds: (approved: number, noted: number) => `Approved at ${approved} fr · noted at ${noted} fr`,
   newBest: 'a new best for this day',
-  stamp: { APPROVED: 'APPROVED', NOTED: 'NOTED', REPRIMAND: 'REPRIMAND' } as Record<string, string>,
+  stamp: { APPROVED: 'APPROVED', NOTED: 'NOTED', REPRIMAND: 'REPRIMAND' },
   signature: '— F.-J.-V. Broussais',
   next: (title: string) => `E / Space — ${title}`,
   epilogue: 'E / Space — what happened next',

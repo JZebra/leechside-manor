@@ -18,6 +18,8 @@ const P = PIXEL;
 const DEPTH = { floor: 0, floorItem: 2, world: 10, overlay: 9000, prompt: 9500, say: 9600, hud: 10000, note: 20000 };
 type Tone = 'good' | 'bad' | 'info' | 'cold';
 const TONE: Record<Tone, PaletteKey> = { good: 'meterGreen1', bad: 'red3', info: 'paper0', cold: 'meterBlue1' };
+// A full meter is the hardiest man's faint, so every bar shares one scale.
+const METER_SCALE = Math.max(...Object.values(CONFIG.patient.types).map((t) => t.faintAt));
 
 interface BedView {
   patient: Phaser.GameObjects.Image;
@@ -678,8 +680,7 @@ export class WardScene extends Phaser.Scene {
   private drawMeter(g: Phaser.GameObjects.Graphics, ax: number, ay: number, w: number, p: Patient) {
     const spec = p.spec;
     const full = spec.faintAt;
-    const scale = Math.max(...Object.values(CONFIG.patient.types).map((t) => t.faintAt));
-    const px = (v: number) => Math.round((Math.min(v, full) / scale) * w);
+    const px = (v: number) => Math.round((Math.min(v, full) / METER_SCALE) * w);
     const end = px(full); // where he faints
     const h = 3;
     g.fillStyle(hex('ink')).fillRect((ax - 1) * P, (ay - 1) * P, (w + 2) * P, (h + 2) * P);
