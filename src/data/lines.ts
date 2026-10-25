@@ -202,7 +202,7 @@ export const WARD = {
   leaving: '(leaving!)', // after the name of a man about to give up waiting
   noDeliveries: 'No deliveries — salt fed leeches to reuse them',
   nextJar: (inSeconds: string) => `Next jar of leeches in ${inSeconds}`,
-  salting: (count: number, inSeconds: string) => `${count} in the salt\nback in ${inSeconds}`,
+  salting: (count: number, inSeconds: string) => `${count} disgorging\nback in ${inSeconds}`,
   soundOff: 'sound off (M)',
   press: (verb: string) => `E  ${verb}`, // the prompt over the doctor's head
   hold: (verb: string) => `${verb} E`, // …for the bdellometer
@@ -310,15 +310,15 @@ export const VERDICT_REMARK = {
 export const FINAL_REMARK = {
   heading: 'What happened next',
   history: [
-    'The cholera killed about 18,000 people in Paris in 1832. It kills by draining the body of water, and bleeding only drained it faster. Leeches saved no one.',
-    'Meanwhile, a Paris doctor named Pierre Louis tried something new: he counted. He kept track of his pneumonia patients — who was bled early, who was bled late, who lived and who died — and in 1835 published the result: bleeding did far less good than everyone believed. It was an early step toward the way every treatment is tested today.',
-    'Broussais’s reputation never recovered. France had been buying tens of millions of leeches a year; after 1832 the number began to fall, and kept falling.',
+    'Cholera killed about 18,000 people in Paris in 1832. It could kill by draining the body of water and salts. Bloodletting could make that dangerous fluid loss worse. Leeches could not cure cholera.',
+    'Meanwhile, a Paris doctor named Pierre Louis was challenging medical certainty with numbers. He compared pneumonia patients and in 1835 published an expanded study questioning how much bloodletting really helped. He still believed it had some uses, but his work became an early contribution to evidence-based medicine.',
+    'Broussais’s influence waned. France had been importing tens of millions of leeches a year; imports fell sharply overall in the years after 1832. The leech population in parts of Europe never recovered.',
   ],
   money: (francs: number) =>
     francs > 0
       ? `Good thing you made ${francs} francs, because the leech business is drying up and you’ll need a new job.`
       : `You finish ${-francs} francs in debt, just as the leech business dries up. Have you considered the law?`,
-  coda: 'The leeches, at least, made a comeback: in 2004 the US Food and Drug Administration approved them as a medical device, to help surgeons save reattached fingers and ears.',
+  coda: 'The leeches, at least, made a comeback. Surgeons found a use for them in relieving blood pooled in damaged tissue after reconstructive surgery. In 2004, the US Food and Drug Administration cleared medicinal leeches for this purpose.',
   footer: 'E / Space — the title page',
 };
 
