@@ -13,6 +13,7 @@ import { WardScene } from './scenes/WardScene';
 import { ResultsScene } from './scenes/ResultsScene';
 import { CreditsScene } from './scenes/CreditsScene';
 import { BoardScene } from './scenes/BoardScene';
+import { EpilogueScene } from './scenes/EpilogueScene';
 
 async function fonts() {
   try {
@@ -41,7 +42,7 @@ fonts().then(() => {
     backgroundColor: css('ink'),
     pixelArt: true,
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    scene: [BootScene, TitleScene, WardScene, ResultsScene, CreditsScene, BoardScene],
+    scene: [BootScene, TitleScene, WardScene, ResultsScene, EpilogueScene, CreditsScene, BoardScene],
   });
   (window as unknown as { game: Phaser.Game }).game = game;
 });

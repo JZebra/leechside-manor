@@ -33,7 +33,8 @@ The design brief is `BRIEF.md`.
   cordon); Paris cholera spring 1832; Broussais's bleeding failed and leeching declined after.
 - `src/data/lines.ts` — every word the player sees: game, year, ward and patient names, the title page,
   stage notes, prompts, failures, floating messages, pause, report, register, credits. Scenes and config
-  import from it; never write player-facing text anywhere else.
+  import from it; never write player-facing text anywhere else. Voice: speeches and verdicts are period;
+  hints, refusals, HUD and the epilogue are plain modern English.
 - `src/model/` — pure logic, **no Phaser** (tests and the sim import it):
   `patient.ts` (blood meter, leeches feeding, after-bleed, chilled/warmed, panic, faint), `supply.ts`
   (jar, deliveries), `shift.ts` (one day: clock, stages, arrivals, takings), `ward.ts` (doctor movement,
@@ -42,7 +43,7 @@ The design brief is `BRIEF.md`.
   orderly routes).
 - `src/scenes/` — Phaser: Boot (textures), Title (BnF Fr. 127 miniature: Galerius eaten by worms; year
   select; L leaderboard, C credits), Ward (input → model → drawing), Results (signing the register),
-  Board (the leaderboard), Credits.
+  Epilogue (after 1832: what really happened, in plain English), Board (the leaderboard), Credits.
 - `src/ui/board.ts` — the leaderboard: top 10 per year (a day must earn something to sign), in localStorage
   (`lc-board`, last name in `lc-name`); local to the browser, not online.
 - `src/art/` — `palette.ts` (Thirty Leeches palette + additions), `pix.ts` (palette-locked buffer),

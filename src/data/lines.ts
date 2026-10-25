@@ -41,8 +41,8 @@ export const TITLE = {
   subtitle: 'Val-de-Grâce, Paris · three years under Broussais, 1828–1832',
   intro:
     'Broussais orders thirty leeches for every man, France buys them by the tens of millions, and you are his house physician. ' +
-    'Bleed each soldier just enough — into the green — then bandage the bites. ' +
-    'Carry out the fainted, salt the fed leeches, mind your footing — and then the cholera comes.',
+    'Bleed each soldier just enough — into the green zone — then bandage the bites. Don’t let them faint! ' +
+    'Carry out anyone who does, salt the fed leeches, and watch your step when you run.',
   plateCaption: '“Le ixe chapitre contient le cas de Galerius … empereur des Rommains.”',
   begin: (year: number) => `Press E or Space to begin ${year}`,
   best: (francs: number) => `best ${francs} fr`,
@@ -50,7 +50,7 @@ export const TITLE = {
   soundOn: 'Sound on (M)',
   soundOff: 'Sound off (M)',
   menu: 'L — Leaderboard   ·   C — Credits',
-  byline: 'Ludum Dare 60 · John Shen',
+  byline: 'originally created for Ludum Dare 60 · John Shen',
 };
 
 export interface Note {
@@ -65,9 +65,9 @@ export const STAGE_NOTES: Record<StageId, Note> = {
     speaker: 'F.-J.-V. Broussais, Physician-in-Chief',
     title: 'February 1828. The Salle Saint-Côme.',
     body: [
-      '“Thirty leeches, gentlemen, and a bandage when they drop. Every fever is an inflamed gut; bleed the gut and the fever goes.”',
+      '“Thirty leeches, gentlemen, and a bandage once the man has bled enough. Every fever is an inflamed gut; bleed the gut and the fever goes.”',
     ],
-    hint: 'Take leeches from Madame Ricard’s jar (up to three; E with a full hand puts them back) and set them on a man. The bar under his bed fills as he bleeds: take a bandage from the cupboard and bandage him in the GREEN. Fed leeches drop to the floor — don’t run over them! Sweep them into the salt bucket and they go back in the jar.',
+    hint: 'Take leeches from the jar (up to three; E with a full hand puts them back) and set them on a man. The bar under his bed fills as he bleeds: take a bandage from the cupboard and bandage him in the GREEN ZONE. Fed leeches drop to the floor — don’t run over them! Sweep them into the salt bucket and they will eventually go back in the jar.',
   },
   frail: {
     speaker: 'Sister Marthe',
@@ -75,7 +75,7 @@ export const STAGE_NOTES: Record<StageId, Note> = {
     body: [
       '“They are bringing up the men from the fever ward, Monsieur. Mind the white-faced ones: they drop like sacks.”',
     ],
-    hint: 'Anemic men (ashen faces) have little blood to spare: a short bar, a narrow green, and they faint soon after it (Prop. 268). One leech and patience — their bites keep bleeding.',
+    hint: 'Anemic men with ashen faces have little blood to spare: their bar is short and they faint quickly. Use one leech and bandage them as soon as they reach the green zone.',
   },
   chill: {
     speaker: 'Sister Marthe',
@@ -83,7 +83,7 @@ export const STAGE_NOTES: Record<StageId, Note> = {
     body: [
       '“The night watch is in from the frost, Monsieur, shivering fit to rattle the beds. I have had the orderlies bring up the stove and put the kettle on.”',
     ],
-    hint: 'Chilled men (blanket to the chin, shivering, blue lips) take no leech until warmed: fill a hot-water bottle at the stove and tuck it in, then bleed them.',
+    hint: 'Chilled men (blanket to the chin, shivering, blue lips) take no leech until warmed: fill a hot-water bottle at the stove and tuck it in before trying to apply leeches.',
   },
   promotion: {
     speaker: 'F.-J.-V. Broussais',
@@ -91,7 +91,7 @@ export const STAGE_NOTES: Record<StageId, Note> = {
     body: [
       '“You bled the Saint-Côme very prettily, Monsieur. Saint-Louis has seven beds and twice the traffic. And go easy with the jar: the cholera is in Hungary, the Austrians have closed the frontier, and Madame Ricard’s leeches come slowly.”',
     ],
-    hint: 'Orderlies cross the aisles and won’t give way: wait, or go round. Hungry leeches climb out of the jar and make for the drain — catch them. Deliveries are slower this year: salt the fed leeches and reuse them. Chilled men still come in, shaking with fever: warm them at the stove first.',
+    hint: 'Orderlies cross the aisles and won’t get out of your way: wait, or go around. Hungry leeches climb out of the jar and make for the drain — catch them. Deliveries are slower this year: salt the fed leeches and reuse them.',
   },
   machine: {
     speaker: 'A crate from the instrument-maker',
@@ -99,7 +99,7 @@ export const STAGE_NOTES: Record<StageId, Note> = {
     body: [
       '“With the compliments of Dr. Sarlandière: the bdellometer. A glass cup, a scarifier and a pump — the leech made obsolete.”',
     ],
-    hint: 'Carry the bdellometer to a bed and HOLD E to pump. Let go to stop at once; it leaves no after-bleed — but it needs both your hands.',
+    hint: 'The bdellometer is a pump that does a leech’s job. Carry it to a bed and HOLD E to pump. The bleeding stops the moment you let go, so he’ll wait in the green zone while you put it back on its stand and fetch a bandage.',
   },
   drummers: {
     speaker: 'Sister Marthe',
@@ -107,16 +107,15 @@ export const STAGE_NOTES: Record<StageId, Note> = {
     body: [
       '“The drummer boys are in, and the new conscripts. The little ones bleed like fountains, and the conscripts faint if you so much as look at a leech.”',
     ],
-    hint: 'Drummer boys’ bites bleed on and on (Prop. 266): one leech, and bandage them soon. Nervous conscripts panic when left alone: stand by them.',
+    hint: 'Drummer boys’ bites bleed on and on: one leech, and bandage them soon. Nervous conscripts panic when left alone: stand by them.',
   },
   cholera: {
-    speaker: 'Madame Ricard, apothecary — and Broussais',
+    speaker: 'Madame Ricard, apothecary',
     title: 'April 1832. The cholera.',
     body: [
       '“The cholera is in Paris, Monsieur, and every hospital in the city is bleeding it. There is not a leech to be bought: what is in the jar is all you will have.”',
-      '“A gastroenteritis like any other, gentlemen. Leeches to the belly.” — Broussais',
     ],
-    hint: 'No deliveries this year: salted leeches go back in the jar, and the bdellometer is on its stand. The cholera brings men in cold and blue — no leech will take until you warm them with a hot-water bottle from the stove.',
+    hint: 'No deliveries this year. The leeches you start with are the only ones you have. Be quick about salting them and be strategic with the bdellometer. The cholera brings men in cold and blue — no leech will take until you warm them with a hot-water bottle from the stove.',
   },
   epidemic: {
     speaker: 'Sister Marthe',
@@ -124,7 +123,7 @@ export const STAGE_NOTES: Record<StageId, Note> = {
     body: [
       '“They are carrying them in from the street now, Monsieur. Every bed, as fast as it empties.”',
     ],
-    hint: 'Men arrive faster for the rest of the day.',
+    hint: 'From now until the bell, patients arrive faster.',
   },
 };
 
@@ -152,18 +151,18 @@ export type Verb = keyof typeof VERB;
 
 export const FAIL = {
   handsFull: 'Hands full',
-  jarEmpty: 'The jar is empty',
-  jarShortage: 'Empty — salt the fed ones to refill it',
-  full: 'Three is plenty',
-  cold: 'He’s cold and blue — no leech will take. Warm him with a hot-water bottle first',
+  jarEmpty: 'The jar is empty — wait for the next delivery',
+  jarShortage: 'The jar is empty — salt fed leeches to refill it',
+  full: 'Three leeches per man, at most',
+  cold: 'Too cold for leeches — warm him with a hot-water bottle first',
   notCold: 'He’s warm enough',
-  saltHungry: 'Salt is for the fed ones',
-  usedOnPatient: 'To the salt bucket with those',
-  notDone: 'Not that — he needs carrying',
-  door: 'Only for the fainted',
-  stand: 'Reserved for Dr. Sarlandière’s instrument',
+  saltHungry: 'Only fed leeches go in the salt',
+  usedOnPatient: 'Fed leeches go in the salt bucket',
+  notDone: 'He’s fainted — carry him out',
+  door: 'Only fainted men go out this door',
+  stand: 'The bdellometer hasn’t arrived yet',
   scoopFull: 'Can’t hold any more',
-  handful: 'Three is a handful',
+  handful: 'You can only carry three',
   nothing: 'Nothing to do here',
 } as const;
 export type Fail = keyof typeof FAIL;
@@ -201,9 +200,9 @@ export const WARD = {
   doorSign: 'To the\nrecovery ward',
   queue: 'At the door',
   leaving: '(leaving!)', // after the name of a man about to give up waiting
-  noDeliveries: 'Not a leech to be bought — salt the fed ones and reuse them',
+  noDeliveries: 'No deliveries — salt fed leeches to reuse them',
   nextJar: (inSeconds: string) => `Next jar of leeches in ${inSeconds}`,
-  salting: (count: number, inSeconds: string) => `${count} disgorging\nback in ${inSeconds}`,
+  salting: (count: number, inSeconds: string) => `${count} in the salt\nback in ${inSeconds}`,
   soundOff: 'sound off (M)',
   press: (verb: string) => `E  ${verb}`, // the prompt over the doctor's head
   hold: (verb: string) => `${verb} E`, // …for the bdellometer
@@ -241,9 +240,8 @@ export const REPORT = {
   newBest: 'a new best for this day',
   stamp: { APPROVED: 'APPROVED', NOTED: 'NOTED', REPRIMAND: 'REPRIMAND' } as Record<string, string>,
   signature: '— F.-J.-V. Broussais',
-  threeYears: (francs: number) => `Your three years: ${francs} francs.`,
   next: (title: string) => `E / Space — ${title}`,
-  toTitle: 'E / Space — the title page',
+  epilogue: 'E / Space — what happened next',
   retry: 'R — this day again',
   title: 'T — title',
 };
@@ -307,9 +305,22 @@ export const VERDICT_REMARK = {
   REPRIMAND: '“Men fainting in the corridors, leeches in the drains. See me in the morning.”',
 };
 
-// After the third year: what became of it all.
-export const FINAL_REMARK =
-  '“Physiological medicine never fails, Monsieur.” It did: the cholera killed some eighteen thousand Parisians in 1832, bleeding saved none of them, and from that year Broussais’s star — and France’s leech imports — began to fall.';
+// After 1832, on its own page: what really happened, in plain English. `francs` is the
+// three years' takings (or 1832's alone, if the run didn't start in 1828).
+export const FINAL_REMARK = {
+  heading: 'What happened next',
+  history: [
+    'The cholera killed about 18,000 people in Paris in 1832. It kills by draining the body of water, and bleeding only drained it faster. Leeches saved no one.',
+    'Meanwhile, a Paris doctor named Pierre Louis tried something new: he counted. He kept track of his pneumonia patients — who was bled early, who was bled late, who lived and who died — and in 1835 published the result: bleeding did far less good than everyone believed. It was an early step toward the way every treatment is tested today.',
+    'Broussais’s reputation never recovered. France had been buying tens of millions of leeches a year; after 1832 the number began to fall, and kept falling.',
+  ],
+  money: (francs: number) =>
+    francs > 0
+      ? `Good thing you made ${francs} francs, because the leech business is drying up and you’ll need a new job.`
+      : `You finish ${-francs} francs in debt, just as the leech business dries up. Have you considered the law?`,
+  coda: 'The leeches, at least, made a comeback: in 2004 the US Food and Drug Administration approved them as a medical device, to help surgeons save reattached fingers and ears.',
+  footer: 'E / Space — the title page',
+};
 
 export const OUTCOME_LABEL: Record<string, string> = {
   green: 'bled just right',

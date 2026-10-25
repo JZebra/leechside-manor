@@ -1,10 +1,10 @@
 // Six o'clock: the day's report, with Broussais's verdict stamped on it. From here,
-// the next day (or, after the third, the title page).
+// the next day (or, after the third, what happened next).
 
 import Phaser from 'phaser';
 import { CONFIG } from '../config';
 import { hex, type PaletteKey } from '../art/palette';
-import { OUTCOME_LABEL, VERDICT_REMARK, FINAL_REMARK, REPORT, REGISTER, TYPE_LABEL } from '../data/lines';
+import { OUTCOME_LABEL, VERDICT_REMARK, REPORT, REGISTER, TYPE_LABEL } from '../data/lines';
 import type { Ward } from '../model/ward';
 import { sfx } from '../audio/audio';
 import { fitCamera, text, panel, STAGE } from '../ui/view';
@@ -95,11 +95,7 @@ export class ResultsScene extends Phaser.Scene {
     stamp.add(sg);
     stamp.add(word);
     stamp.setScale(1.6).setVisible(false);
-    const total = run.reduce((a, b) => a + (b ?? 0), 0);
-    const remark = last && run.filter((x) => x != null).length === CONFIG.days.length
-      ? `${FINAL_REMARK} ${REPORT.threeYears(total)}`
-      : VERDICT_REMARK[verdict];
-    text(this, 920, 572, remark, { size: 18, italic: true, wrap: 280, color: 'wood2' });
+    text(this, 920, 572, VERDICT_REMARK[verdict], { size: 18, italic: true, wrap: 280, color: 'wood2' });
     text(this, 1196, 648, REPORT.signature, { size: 16, italic: true, color: 'wood3' }).setOrigin(1, 0);
 
     this.time.delayedCall(700, () => {
@@ -107,14 +103,18 @@ export class ResultsScene extends Phaser.Scene {
       this.tweens.add({ targets: stamp, scale: 1, duration: 160, ease: 'Stepped', easeParams: [3], onComplete: () => sfx('stamp') });
     });
 
-    const next = last ? REPORT.toTitle : REPORT.next(CONFIG.days[day + 1].title);
+    const next = last ? REPORT.epilogue : REPORT.next(CONFIG.days[day + 1].title);
     const footer = text(this, 100, 648, `${next}   ·   ${REPORT.retry}   ·   ${REPORT.title}`, { font: 'display', size: 22, color: 'red2' });
     const kb = this.input.keyboard!;
     const idle = () => this.entering || this.time.now - this.signedAt < 300; // the Enter that signs mustn't also leave
     const go = () => {
       if (idle()) return;
       sfx('page');
-      if (last) this.scene.start('title');
+      if (last) {
+        // the three years' takings, or 1832's alone if the run didn't start in 1828
+        const whole = run.filter((x) => x != null).length === CONFIG.days.length;
+        this.scene.start('epilogue', { francs: whole ? run.reduce((a, b) => a + b, 0) : shift.money });
+      }
       else this.scene.start('ward', { day: day + 1 });
     };
     this.time.delayedCall(800, () => {

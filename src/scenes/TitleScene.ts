@@ -67,7 +67,7 @@ export class TitleScene extends Phaser.Scene {
     const showMute = () => mute.setText(isMuted() ? TITLE.soundOff : TITLE.soundOn);
     showMute();
     text(this, x, 668, TITLE.menu, { font: 'display', size: 20, color: 'wood3' });
-    text(this, x + w, 668, TITLE.byline, { size: 15, italic: true, color: 'paper4' }).setOrigin(1, 0);
+    text(this, x + w, 646, TITLE.byline, { size: 15, italic: true, color: 'paper4' }).setOrigin(1, 0); // its own line: the menu is long
 
     const start = () => {
       sfx('page');
