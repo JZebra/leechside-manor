@@ -4,7 +4,7 @@
 // Salle Saint-Côme (day 1)                Salle Saint-Louis (days 2–3)
 //   wall ─ [recovery door] ── windows      wall ─ [recovery door] ── windows
 //          bed bed bed                  ⟶ orderlies ⟶ bed bed bed bed ⟶
-//     [jar] [lint] [stove] [salt]           [jar] [lint] [stove] [salt]
+//     [jar] [cupb] [stove] [salt]           [jar] [cupb] [stove] [salt]
 //            bed bed   [bdellometer]    ⟵ orderlies ⟵ bed bed bed  [bdellometer]
 //                               drain                                  drain
 

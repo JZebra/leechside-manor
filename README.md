@@ -6,7 +6,7 @@ millions, and you are his house physician at the Val-de-Grâce.*
 A frantic, darkly funny time-management game in the Overcooked mould, made for **Ludum Dare 60
 ("Old Tech")** by John Shen, using Claude AI.
 
-Bleed each soldier just enough — into the green — then press lint on the bites. Carry out the
+Bleed each soldier just enough — into the green — then bandage the bites. Carry out the
 fainted, salt the fed leeches so they can be used again, keep the hungry ones out of the drain, and
 don't run over the fed ones on the floor. Three years, three shifts — and then the cholera comes.
 Sign the register if your takings make the top ten.
@@ -15,7 +15,7 @@ Sign the register if your takings make the top ten.
 
 | Year | Ward | What happens |
 |---|---|---|
-| **1828** | Salle Saint-Côme, 5 beds | The craze at its height: plenty of leeches. Anaemic men at noon; at three the stove is brought up and chilled men come in from the frost (warm them with a hot-water bottle before any leech will take) |
+| **1828** | Salle Saint-Côme, 5 beds | The craze at its height: plenty of leeches. Anemic men at noon; at three the stove is brought up and chilled men come in from the frost (warm them with a hot-water bottle before any leech will take) |
 | **1831** | Salle Saint-Louis, 7 beds | Cholera in Hungary slows the leech shipments. Orderlies in the aisles, runaway leeches, Sarlandière's bdellometer at 12:30, drummer boys and nervous conscripts at three |
 | **1832** | Salle Saint-Louis | The cholera in Paris: no deliveries at all, and the cold, blue men are cholera patients |
 
@@ -65,7 +65,7 @@ palette-locked pixel buffer (`src/art/`).
 - **Type:** IM Fell English (Igino Marini) and EB Garamond (Georg Duffner, Octavio Pardo), SIL Open
   Font License
 
-## Licence
+## License
 
 The **code** is MIT-licensed ([LICENSE](LICENSE)). The **assets** keep their own terms: the music is
 CC BY 4.0 (credit Kevin MacLeod), the sound effects are CC0, the fonts are SIL OFL, and the title

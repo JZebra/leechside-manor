@@ -74,7 +74,7 @@ export class Patient {
   // 0 = his own colour … 3 = white as wax (the Thirty Leeches pallor ladder).
   pallorRung(): number {
     if (this.state === 'fainted') return 3;
-    const base = this.type === 'anaemic' ? 2 : 0;
+    const base = this.type === 'anemic' ? 2 : 0;
     const share = this.blood / this.spec.faintAt;
     const bled = share < 0.45 ? 0 : share < 0.85 ? 1 : 2;
     return Math.min(3, base + bled);
@@ -115,7 +115,7 @@ export class Patient {
     return this.checkThresholds();
   }
 
-  // Lint and amadou: stops everything. Returns the fee and how many leeches fell off.
+  // A bandage (lint and amadou): stops everything. Returns the fee and how many leeches fell off.
   bandage(): { outcome: 'green' | 'early' | 'late'; fee: number; dropped: number } | null {
     if (!this.active) return null;
     const zone = this.zone();
@@ -183,7 +183,7 @@ export class Patient {
   private faint(cause: FaintCause): PatientEvent {
     const dropped = this.attachedCount;
     this.leeches.fill(null);
-    this.wounds = 0; // the stretcher-bearers press lint on as they lift him
+    this.wounds = 0; // the stretcher-bearers bandage him as they lift him
     this.state = 'fainted';
     this.faintCause = cause;
     this.outcome = 'faint';

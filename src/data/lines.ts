@@ -23,7 +23,7 @@ export const WARD_NAME = {
 // Shown under a man's name in the ward and in the report.
 export const TYPE_LABEL = {
   soldier: 'Soldier',
-  anaemic: 'Anaemic',
+  anemic: 'Anemic',
   drummer: 'Drummer boy',
   nervous: 'Nervous conscript',
 };
@@ -41,7 +41,7 @@ export const TITLE = {
   subtitle: 'Val-de-Grâce, Paris · three years under Broussais, 1828–1832',
   intro:
     'Broussais orders thirty leeches for every man, France buys them by the tens of millions, and you are his house physician. ' +
-    'Bleed each soldier just enough — into the green — then press lint on the bites. ' +
+    'Bleed each soldier just enough — into the green — then bandage the bites. ' +
     'Carry out the fainted, salt the fed leeches, mind your footing — and then the cholera comes.',
   plateCaption: '“Le ixe chapitre contient le cas de Galerius … empereur des Rommains.”',
   begin: (year: number) => `Press E or Space to begin ${year}`,
@@ -65,9 +65,9 @@ export const STAGE_NOTES: Record<StageId, Note> = {
     speaker: 'F.-J.-V. Broussais, Physician-in-Chief',
     title: 'February 1828. The Salle Saint-Côme.',
     body: [
-      '“Thirty leeches, gentlemen, and lint when they drop. Every fever is an inflamed gut; bleed the gut and the fever goes.”',
+      '“Thirty leeches, gentlemen, and a bandage when they drop. Every fever is an inflamed gut; bleed the gut and the fever goes.”',
     ],
-    hint: 'Take leeches from Madame Ricard’s jar (up to three; E with a full hand puts them back) and set them on a man. The bar under his bed fills as he bleeds: press lint from the cupboard on him in the GREEN. Fed leeches drop to the floor — don’t run over them! Sweep them into the salt bucket and they go back in the jar.',
+    hint: 'Take leeches from Madame Ricard’s jar (up to three; E with a full hand puts them back) and set them on a man. The bar under his bed fills as he bleeds: take a bandage from the cupboard and bandage him in the GREEN. Fed leeches drop to the floor — don’t run over them! Sweep them into the salt bucket and they go back in the jar.',
   },
   frail: {
     speaker: 'Sister Marthe',
@@ -75,7 +75,7 @@ export const STAGE_NOTES: Record<StageId, Note> = {
     body: [
       '“They are bringing up the men from the fever ward, Monsieur. Mind the white-faced ones: they drop like sacks.”',
     ],
-    hint: 'Anaemic men (ashen faces) have little blood to spare: a short bar, a narrow green, and they faint soon after it (Prop. 268). One leech and patience — their bites keep bleeding.',
+    hint: 'Anemic men (ashen faces) have little blood to spare: a short bar, a narrow green, and they faint soon after it (Prop. 268). One leech and patience — their bites keep bleeding.',
   },
   chill: {
     speaker: 'Sister Marthe',
@@ -107,14 +107,14 @@ export const STAGE_NOTES: Record<StageId, Note> = {
     body: [
       '“The drummer boys are in, and the new conscripts. The little ones bleed like fountains, and the conscripts faint if you so much as look at a leech.”',
     ],
-    hint: 'Drummer boys’ bites bleed on and on (Prop. 266): one leech, and lint soon. Nervous conscripts panic when left alone: stand by them.',
+    hint: 'Drummer boys’ bites bleed on and on (Prop. 266): one leech, and bandage them soon. Nervous conscripts panic when left alone: stand by them.',
   },
   cholera: {
     speaker: 'Madame Ricard, apothecary — and Broussais',
     title: 'April 1832. The cholera.',
     body: [
       '“The cholera is in Paris, Monsieur, and every hospital in the city is bleeding it. There is not a leech to be bought: what is in the jar is all you will have.”',
-      '“A gastro-enteritis like any other, gentlemen. Leeches to the belly.” — Broussais',
+      '“A gastroenteritis like any other, gentlemen. Leeches to the belly.” — Broussais',
     ],
     hint: 'No deliveries this year: salted leeches go back in the jar, and the bdellometer is on its stand. The cholera brings men in cold and blue — no leech will take until you warm them with a hot-water bottle from the stove.',
   },
@@ -135,11 +135,11 @@ export const VERB = {
   takeLeech: 'Take a leech',
   putBack: 'Put it back',
   putBackAll: 'Put them all back',
-  takeLint: 'Take lint',
+  takeBandage: 'Take a bandage',
   takeBottle: 'Fill a hot-water bottle',
   takeDevice: 'Take the bdellometer',
   apply: 'Apply leech',
-  bandage: 'Press lint',
+  bandage: 'Apply bandage',
   warm: 'Tuck in the hot-water bottle',
   pump: 'Hold to pump',
   lift: 'Lift onto stretcher',
@@ -169,7 +169,7 @@ export const FAIL = {
 export type Fail = keyof typeof FAIL;
 
 export const SAY = {
-  ready: 'Ready for lint',
+  ready: 'Ready for a bandage',
   warning: 'Enough!',
   faintBlood: 'Fainted! Carry him out',
   faintFright: 'Fainted from fright!',
@@ -188,7 +188,7 @@ export const SAY = {
   stoveArrives: 'The stove is brought up',
   deviceArrives: 'The bdellometer has come',
   warmed: 'Warmed — the leeches will take now',
-  delivered: 'To the convalescents',
+  delivered: 'To the recovery ward',
   salted: (count: number) => `Salted ${count}`,
   jostle: 'Pardon, Monsieur!',
   collide: 'Ran into an orderly!',
@@ -198,7 +198,7 @@ export const SAY = {
 // ── The ward ─────────────────────────────────────────────────────────────────
 
 export const WARD = {
-  doorSign: 'To the\nconvalescents',
+  doorSign: 'To the\nrecovery ward',
   queue: 'At the door',
   leaving: '(leaving!)', // after the name of a man about to give up waiting
   noDeliveries: 'Not a leech to be bought — salt the fed ones and reuse them',
@@ -283,7 +283,7 @@ export const CREDITS = {
         'Doors, cloth and footsteps: Kenney, RPG Audio and Impact Sounds (kenney.nl)',
         'Wet splats: Independent.nu, via qubodup — OpenGameArt',
         'Slow heartbeat: bart · Squelches and pops: EZduzziteh · Scissors: sinny · Boiling water: TinyWorlds — OpenGameArt',
-        'Everything else synthesised in the browser with filtered noise and jsfxr.',
+        'Everything else synthesized in the browser with filtered noise and jsfxr.',
       ],
     },
     {

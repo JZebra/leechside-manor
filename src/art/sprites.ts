@@ -379,7 +379,7 @@ function orderly(step: number, load: number) {
 
 // ── Items carried or lying about ────────────────────────────────────────────
 
-function lint() {
+function bandage() {
   const p = new Pix(13, 11);
   p.ellipse(5, 6, 4.5, 3.6, 'linen0');
   p.ellipse(5, 6, 2, 1.6, 'linen1');
@@ -516,7 +516,7 @@ function cupboard() {
   const p = new Pix(28, 26);
   p.rect(1, 1, 26, 24, 'wood3');
   p.rect(3, 3, 22, 9, 'wood1').rect(3, 14, 22, 9, 'wood1');
-  // shelves of lint rolls and amadou cakes
+  // shelves of bandage rolls and amadou cakes
   for (const [x, y] of [[5, 6], [10, 6], [15, 6], [5, 17], [10, 17]] as [number, number][]) {
     p.ellipse(x + 1.5, y + 1.5, 2.2, 2.2, 'linen0');
     p.set(x + 1, y + 1, 'linen1');
@@ -656,7 +656,7 @@ export function registerTextures(scene: Phaser.Scene) {
     add(escapeKey(d, 0), leech({ angle, length: 12.5, girth: 1.6, wave: 0.7, mouth: 'open' }, 15));
     add(escapeKey(d, 1), leech({ angle, length: 8, girth: 2.3, bend: 2.2, mouth: 'shut' }, 15));
   }
-  add('item:lint', lint());
+  add('item:bandage', bandage());
   add('item:bottle', hotWaterBottle());
   add('item:bdello', bdellometer());
   for (let s = 0; s < 2; s++) for (let f = 0; f <= 4; f++) add(`cup:${s}:${f}`, cupOnChest(s, f / 4));

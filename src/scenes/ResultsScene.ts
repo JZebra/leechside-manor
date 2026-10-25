@@ -56,7 +56,7 @@ export class ResultsScene extends Phaser.Scene {
       const col = Math.floor(i / perCol);
       const x = 100 + col * 400;
       const y = 156 + (i % perCol) * 30;
-      const kind = e.type === 'anaemic' || e.type === 'nervous' ? ` (${TYPE_LABEL[e.type].toLowerCase()})` : ''; // drummers say so in their rank
+      const kind = e.type === 'anemic' || e.type === 'nervous' ? ` (${TYPE_LABEL[e.type].toLowerCase()})` : ''; // drummers say so in their rank
       text(this, x, y, `${e.profile.rank} ${e.profile.surname}${kind}`, { size: 18 });
       text(this, x + 220, y + 1, OUTCOME_LABEL[e.outcome] ?? e.outcome, { size: 16, italic: true, color: OUTCOME_COLOUR[e.outcome] ?? 'wood3' });
       if (e.fee) text(this, x + 385, y, `${e.fee > 0 ? '+' : ''}${e.fee}`, { size: 18, color: e.fee > 0 ? 'ink' : 'red2' }).setOrigin(1, 0);

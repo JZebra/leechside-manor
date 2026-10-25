@@ -28,7 +28,7 @@ describe('Shift', () => {
     expect(first.filter((e) => e.kind === 'arrival')).toHaveLength(CONFIG.arrivals.opening);
   });
 
-  it('1828: only soldiers until noon brings the anaemic', () => {
+  it('1828: only soldiers until noon brings the anemic', () => {
     const s = new Shift('test', 0);
     const ev: ShiftEvent[] = [];
     while (s.minutes < 12 * 60 - 1) ev.push(...s.tick(0.25));

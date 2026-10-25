@@ -17,7 +17,7 @@ export type Hand =
   | null
   | { kind: 'leech'; count: number } // a handful of hungry leeches
   | { kind: 'used'; count: number } // fed ones, for the salt
-  | { kind: 'lint' }
+  | { kind: 'bandage' }
   | { kind: 'bottle' } // a stoneware hot-water bottle, filled at the stove
   | { kind: 'bdello' }
   | { kind: 'stretcher'; patient: Patient };
@@ -340,8 +340,8 @@ export class Ward {
           if (this.supply.jar <= 0) return no(this.supply.deliveries ? 'jarEmpty' : 'jarShortage');
           return ok('takeLeech');
         case 'cupboard':
-          if (hand?.kind === 'lint') return ok('putBack');
-          return hand ? no('handsFull') : ok('takeLint');
+          if (hand?.kind === 'bandage') return ok('putBack');
+          return hand ? no('handsFull') : ok('takeBandage');
         case 'stove':
           if (hand?.kind === 'bottle') return ok('putBack');
           return hand ? no('handsFull') : ok('takeBottle');
@@ -369,7 +369,7 @@ export class Ward {
         if (p.chilled) return no('cold');
         if (p.attachedCount >= CONFIG.patient.maxLeeches) return no('full');
         return ok('apply');
-      case 'lint':
+      case 'bandage':
         return ok('bandage');
       case 'bottle':
         return p.chilled ? ok('warm') : no('notCold');
@@ -404,9 +404,9 @@ export class Ward {
         out.push({ kind: 'putBack', what: hand!.kind });
         this.hand = null;
         break;
-      case 'takeLint':
-        this.hand = { kind: 'lint' };
-        out.push({ kind: 'take', what: 'lint' });
+      case 'takeBandage':
+        this.hand = { kind: 'bandage' };
+        out.push({ kind: 'take', what: 'bandage' });
         break;
       case 'takeBottle':
         this.hand = { kind: 'bottle' };

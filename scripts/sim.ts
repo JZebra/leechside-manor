@@ -6,7 +6,7 @@
 //
 // Bots:
 //   idle      — never moves (the floor of the scoring)
-//   broussais — three leeches on every man, lint in the green; warms a chilled man only
+//   broussais — three leeches on every man, a bandage in the green; warms a chilled man only
 //               after he refuses a leech
 //   careful   — leeches by type (one for the pale and the drummers), warms the chilled
 //               first, stands by the nervous, pumps when the jar runs low, salts eagerly
@@ -83,7 +83,7 @@ class Driver {
   stow() {
     const h = this.w.hand;
     if (!h) return;
-    const home: Record<string, StationId> = { leech: 'jar', lint: 'cupboard', bottle: 'stove', bdello: 'stand', used: 'bucket', stretcher: 'door' };
+    const home: Record<string, StationId> = { leech: 'jar', bandage: 'cupboard', bottle: 'stove', bdello: 'stand', used: 'bucket', stretcher: 'door' };
     this.toStation(home[h.kind]);
     for (let n = 0; n < 4 && this.w.hand; n++) this.act(this.station(home[h.kind]));
   }
@@ -117,13 +117,13 @@ function makeBot(opts: { leechesFor: (p: Patient) => number; careful: boolean })
         continue;
       }
       const active = beds.filter((x) => x.p!.active);
-      // 2. lint for whoever is in (or about to be in) the green, worst first
-      const lintable = active
+      // 2. a bandage for whoever is in (or about to be in) the green, worst first
+      const toBandage = active
         .filter((x) => x.p!.zone() !== 'red' || (x.p!.blood + owed(x.p!) >= x.p!.spec.green[0] + 0.02 && x.p!.blood > x.p!.spec.green[0] - 0.12))
         .sort((a, b) => b.p!.blood / b.p!.spec.faintAt - a.p!.blood / a.p!.spec.faintAt);
-      if (lintable.length) {
-        const x = lintable[0];
-        if (w.hand?.kind !== 'lint') {
+      if (toBandage.length) {
+        const x = toBandage[0];
+        if (w.hand?.kind !== 'bandage') {
           d.stow();
           d.toStation('cupboard');
           d.act(d.station('cupboard'));
@@ -223,7 +223,7 @@ function makeBot(opts: { leechesFor: (p: Patient) => number; careful: boolean })
 
 const broussais = makeBot({ leechesFor: () => 3, careful: false });
 const careful = makeBot({
-  leechesFor: (p) => ({ soldier: 3, anaemic: 1, drummer: 1, nervous: 2 })[p.type],
+  leechesFor: (p) => ({ soldier: 3, anemic: 1, drummer: 1, nervous: 2 })[p.type],
   careful: true,
 });
 

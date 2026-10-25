@@ -43,7 +43,7 @@ describe('Patient', () => {
     expect(p.attach()).toBe('full');
   });
 
-  it('lint in the green earns the full fee and drops attached leeches', () => {
+  it('a bandage in the green earns the full fee and drops attached leeches', () => {
     const p = new Patient('soldier', profile);
     p.attach();
     p.attach();
@@ -60,14 +60,14 @@ describe('Patient', () => {
     expect(p.tick(1)).toEqual([]);
   });
 
-  it('lint too early pays less', () => {
+  it('a bandage too early pays less', () => {
     const p = new Patient('soldier', profile);
     p.attach();
     expect(p.bandage()!.outcome).toBe('early');
   });
 
-  it('three leeches and the after-bleed will faint an anaemic man', () => {
-    const p = new Patient('anaemic', profile);
+  it('three leeches and the after-bleed will faint an anemic man', () => {
+    const p = new Patient('anemic', profile);
     p.attach();
     p.attach();
     p.attach();
@@ -76,7 +76,7 @@ describe('Patient', () => {
     expect(faint).toBeTruthy();
     expect(p.state).toBe('fainted');
     expect(p.leeches.every((l) => l === null)).toBe(true);
-    expect(p.bandage()).toBeNull(); // no lint for a fainted man: carry him out
+    expect(p.bandage()).toBeNull(); // no bandage for a fainted man: carry him out
   });
 
   it('warns (blue) before fainting', () => {
@@ -88,8 +88,8 @@ describe('Patient', () => {
     expect(kinds.indexOf('warning')).toBeLessThan(kinds.indexOf('faint'));
   });
 
-  it('one leech on an anaemic man lands in the green with time to spare', () => {
-    const p = new Patient('anaemic', profile);
+  it('one leech on an anemic man lands in the green with time to spare', () => {
+    const p = new Patient('anemic', profile);
     p.attach();
     let greenFor = 0;
     for (let t = 0; t < 60 && p.active; t += 0.1) {
@@ -111,8 +111,8 @@ describe('Patient', () => {
     expect(company.panic).toBe(0);
   });
 
-  it('pallor climbs the ladder; anaemic men start pale', () => {
+  it('pallor climbs the ladder; anemic men start pale', () => {
     expect(new Patient('soldier', profile).pallorRung()).toBe(0);
-    expect(new Patient('anaemic', profile).pallorRung()).toBe(2);
+    expect(new Patient('anemic', profile).pallorRung()).toBe(2);
   });
 });

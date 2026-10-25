@@ -28,7 +28,7 @@ export const PALETTE = {
   skinB0: '#eec29a', skinB1: '#d49d71', skinB2: '#ad7250', skinB3: '#7d4c34', // weathered
   skinC0: '#c98d60', skinC1: '#a36a43', skinC2: '#7a4a2e', skinC3: '#55321f', // dark
   pallid0: '#f1e2ca', pallid1: '#ddc6aa', pallid2: '#b9a189', pallid3: '#8a7664', // bled, drawn
-  pale0: '#eeebdc', pale1: '#d2cfbe', pale2: '#aaa898', pale3: '#7d7c70', // anaemic, ashen
+  pale0: '#eeebdc', pale1: '#d2cfbe', pale2: '#aaa898', pale3: '#7d7c70', // anemic, ashen
   wax0: '#f8f6ee', wax1: '#e6e4d8', wax2: '#c4c2b4', wax3: '#96958a', // white as wax
 
   // hair

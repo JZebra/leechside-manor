@@ -5,7 +5,7 @@
 Overcooked-style single-player chaos in a leech ward: Broussais's house physician at the Val-de-Grâce
 bleeds soldiers with leeches, one day's shift (8:00 to the six o'clock bell) in each of three years
 synced to the real history of the leech trade and the cholera:
-1828 the Salle Saint-Côme (the craze at its height; basics, anaemic men at noon; at 3 the stove is
+1828 the Salle Saint-Côme (the craze at its height; basics, anemic men at noon; at 3 the stove is
 brought up and chilled men come in from the frost — a hot-water bottle before any leech will take) ·
 1831 the Salle Saint-Louis (seven beds, orderlies, runaway leeches; cholera in Hungary slows
 deliveries; the bdellometer at 12:30, drummer boys and nervous conscripts at 3) · 1832 the cholera
@@ -43,7 +43,7 @@ The design brief is `BRIEF.md`.
 - `src/scenes/` — Phaser: Boot (textures), Title (BnF Fr. 127 miniature: Galerius eaten by worms; year
   select; L leaderboard, C credits), Ward (input → model → drawing), Results (signing the register),
   Board (the leaderboard), Credits.
-- `src/ui/board.ts` — the leaderboard: top 10 per year and for full three-year runs, in localStorage
+- `src/ui/board.ts` — the leaderboard: top 10 per year (a day must earn something to sign), in localStorage
   (`lc-board`, last name in `lc-name`); local to the browser, not online.
 - `src/art/` — `palette.ts` (Thirty Leeches palette + additions), `pix.ts` (palette-locked buffer),
   `sprites.ts` (every sprite drawn procedurally and registered as a texture).

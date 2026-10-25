@@ -3,7 +3,7 @@
 
 import { YEAR_TITLE, TYPE_LABEL, COLD_LABEL } from './data/lines';
 
-export type PatientType = 'soldier' | 'anaemic' | 'drummer' | 'nervous';
+export type PatientType = 'soldier' | 'anemic' | 'drummer' | 'nervous';
 export type StageId = 'basics' | 'frail' | 'chill' | 'promotion' | 'machine' | 'drummers' | 'cholera' | 'epidemic';
 export type WardId = 'saintCome' | 'saintLouis';
 
@@ -93,13 +93,13 @@ export const CONFIG = {
 
   stages: {
     basics: { interval: 17, mix: { soldier: 1 } },
-    frail: { interval: 14, mix: { soldier: 3, anaemic: 1.4 } },
-    chill: { interval: 14, mix: { soldier: 3, anaemic: 1.4 }, stove: true, cold: 0.35 },
-    promotion: { interval: 13, mix: { soldier: 3, anaemic: 1 }, stove: true, cold: 0.15 },
-    machine: { interval: 12, mix: { soldier: 3, anaemic: 1.2 }, stove: true, cold: 0.15, machine: true },
-    drummers: { interval: 12, mix: { soldier: 3, anaemic: 1, drummer: 0.9, nervous: 0.9 }, stove: true, cold: 0.15, machine: true },
-    cholera: { interval: 15, mix: { soldier: 3, anaemic: 1.2, drummer: 0.6, nervous: 0.6 }, stove: true, cold: 0.3, machine: true },
-    epidemic: { interval: 12, mix: { soldier: 3, anaemic: 1.2, drummer: 0.8, nervous: 0.8 }, stove: true, cold: 0.3, machine: true },
+    frail: { interval: 14, mix: { soldier: 3, anemic: 1.4 } },
+    chill: { interval: 14, mix: { soldier: 3, anemic: 1.4 }, stove: true, cold: 0.35 },
+    promotion: { interval: 13, mix: { soldier: 3, anemic: 1 }, stove: true, cold: 0.15 },
+    machine: { interval: 12, mix: { soldier: 3, anemic: 1.2 }, stove: true, cold: 0.15, machine: true },
+    drummers: { interval: 12, mix: { soldier: 3, anemic: 1, drummer: 0.9, nervous: 0.9 }, stove: true, cold: 0.15, machine: true },
+    cholera: { interval: 15, mix: { soldier: 3, anemic: 1.2, drummer: 0.6, nervous: 0.6 }, stove: true, cold: 0.3, machine: true },
+    epidemic: { interval: 12, mix: { soldier: 3, anemic: 1.2, drummer: 0.8, nervous: 0.8 }, stove: true, cold: 0.3, machine: true },
   } as Record<StageId, StageSpec>,
 
   arrivals: {
@@ -114,7 +114,7 @@ export const CONFIG = {
     // green band [start, end]; blue (warning) runs from end to faintAt
     types: {
       soldier: { green: [0.55, 0.8], faintAt: 0.92, afterBleed: 1, label: TYPE_LABEL.soldier },
-      anaemic: { green: [0.28, 0.36], faintAt: 0.42, afterBleed: 1, label: TYPE_LABEL.anaemic }, // frail: in the green soon, out of it sooner, and down before you know it
+      anemic: { green: [0.28, 0.36], faintAt: 0.42, afterBleed: 1, label: TYPE_LABEL.anemic }, // frail: in the green soon, out of it sooner, and down before you know it
       drummer: { green: [0.45, 0.7], faintAt: 0.82, afterBleed: 2.5, label: TYPE_LABEL.drummer },
       nervous: { green: [0.55, 0.8], faintAt: 0.92, afterBleed: 1, label: TYPE_LABEL.nervous },
     } as Record<PatientType, { green: [number, number]; faintAt: number; afterBleed: number; label: string }>,
@@ -128,7 +128,7 @@ export const CONFIG = {
   leech: {
     feedSeconds: 9, // hungry → sated
     extraction: 0.022, // blood per second while feeding (≈0.2 per leech)
-    afterBleed: 0.008, // blood per second per open bite, until lint
+    afterBleed: 0.008, // blood per second per open bite, until bandaged
     escape: {
       every: 16, // seconds between escape checks (days with escapes)
       chance: 0.5,
@@ -169,8 +169,8 @@ export const CONFIG = {
 
   score: {
     green: 12, // francs: bled just right
-    early: 5, // lint before the green
-    late: 7, // lint in the blue, before he faints
+    early: 5, // bandaged before the green
+    late: 7, // bandaged in the blue, before he faints
     faint: -10,
     walkedOut: -6,
     leechLost: -2, // down the drain, or squashed underfoot

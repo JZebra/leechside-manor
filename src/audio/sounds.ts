@@ -54,7 +54,7 @@ export const SOUNDS = {
   stamp: { def: { wave_type: 3, p_env_sustain: 0.06, p_env_decay: 0.3, p_env_punch: 0.8, p_base_freq: 0.14, p_lpf_freq: 0.34, sound_vol: 0.46 }, vary: 0.05 },
   gasp: { noise: { dur: 0.45, attack: 0.18, band: [500, 1300, 700], q: 0.5, vol: 0.4 }, vary: 0.05 },
   // ── the ward ──
-  // lint pressed on: a soft cloth pat
+  // a bandage pressed on: a soft cloth pat
   pat: { file: sfx('lint-1', 'lint-2', 'lint-3'), vol: 0.7, noise: { dur: 0.16, attack: 0.01, band: [900, 1400, 600], q: 0.6, vol: 0.7 }, vary: 0.15 },
   // picking something up off a shelf
   pick: { noise: { dur: 0.1, attack: 0.005, band: [1800, 2600, 1600], q: 0.9, vol: 0.45 }, vary: 0.2 },
@@ -95,7 +95,7 @@ export const SOUNDS = {
   scoop: { file: sfx('scoop-1', 'scoop-2'), vol: 0.55, def: { wave_type: 3, p_env_sustain: 0.12, p_env_decay: 0.25, p_base_freq: 0.16, p_freq_ramp: -0.18, p_lpf_freq: 0.3, sound_vol: 0.3 }, vary: 0.12 },
   // the splat of the fed leech he slipped on
   slipSplat: { file: sfx('slip-splat'), vol: 0.7, def: { wave_type: 3, p_env_sustain: 0.1, p_env_decay: 0.3, p_base_freq: 0.12, p_lpf_freq: 0.3, sound_vol: 0.35 }, vary: 0.08 },
-  // a roll of lint taken from the cupboard
+  // a bandage roll taken from the cupboard
   cloth: { file: sfx('cloth-1', 'cloth-2'), vol: 0.5, noise: { dur: 0.25, attack: 0.02, band: [2000, 3000, 1500], q: 0.6, vol: 0.4 }, vary: 0.1 },
   // the kettle at the boil — heard only when a hot-water bottle is filled at the stove
   boil: { file: sfx('boil'), vol: 0.5, noise: { dur: 0.6, attack: 0.05, band: [700, 1100, 600], q: 0.7, vol: 0.4, crackle: 0.6 }, vary: 0.05 },

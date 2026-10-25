@@ -87,7 +87,7 @@ describe('the ward', () => {
     expect(w.supply.jar).toBe(jar);
   });
 
-  it('lint in the green pays the full fee', () => {
+  it('a bandage in the green pays the full fee', () => {
     const w = new Ward('lint');
     const p = untilPatient(w, 0);
     p.blood = (p.spec.green[0] + p.spec.green[1]) / 2;
@@ -135,7 +135,7 @@ describe('the ward', () => {
     expect(w.target()?.check).toEqual({ ok: true, verb: 'lift' });
   });
 
-  it('a fed leech by the lint cupboard is picked up, not the lint (the cupboard reaches only from its base)', () => {
+  it('a fed leech by the bandage cupboard is picked up, not a bandage (the cupboard reaches only from its base)', () => {
     const w = new Ward('cupboard');
     const c = w.layout.stations.cupboard;
     // a leech on the floor just above the cupboard's sprite; the doctor beside it, facing it
@@ -340,7 +340,7 @@ describe('the ward', () => {
   it('every carried thing has somewhere to go (no softlocks)', () => {
     const w = new Ward('homes', DAY2);
     w.skipTo('machine');
-    const homes = { leech: 'jar', lint: 'cupboard', bottle: 'stove', bdello: 'stand', used: 'bucket' } as const;
+    const homes = { leech: 'jar', bandage: 'cupboard', bottle: 'stove', bdello: 'stand', used: 'bucket' } as const;
     for (const [kind, station] of Object.entries(homes)) {
       w.hand = kind === 'used' ? { kind: 'used', count: 2 } : kind === 'leech' ? { kind: 'leech', count: 3 } : ({ kind } as never);
       if (kind === 'bdello') w.deviceOnStand = false;

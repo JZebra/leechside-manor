@@ -47,7 +47,7 @@ export function lookOf(p: Patient): PatientLook {
     skin: pt.skin,
     hair: p.type === 'drummer' ? 'hairBrown' : pt.hair,
     moustache: pt.moustache && p.type !== 'drummer',
-    build: p.type === 'anaemic' ? 'thin' : p.type === 'drummer' ? 'small' : 'normal',
+    build: p.type === 'anemic' ? 'thin' : p.type === 'drummer' ? 'small' : 'normal',
     pallor: p.pallorRung(),
     eyes: p.state === 'fainted' ? 'closed' : p.type === 'nervous' ? 'wide' : 'open',
     sweat: p.active && ((p.type === 'nervous' && p.panic > 0.4) || p.zone() === 'blue'),
@@ -154,7 +154,8 @@ export class WardScene extends Phaser.Scene {
       const s = L.stations[id];
       this.stations[id] = sprite(this, s.tex, s.box.x, s.box.y).setDepth(id === 'door' ? DEPTH.floor + 1 : DEPTH.world + s.box.y + s.box.h);
     }
-    text(this, (L.stations.door.box.x + 26) * P, 6 * P, WARD.doorSign, { size: 15, italic: true, color: 'paper0', stroke: 'ink', strokeWidth: 4 })
+    text(this, (L.stations.door.box.x - 2) * P, 6 * P, WARD.doorSign, { size: 15, italic: true, color: 'paper0', stroke: 'ink', strokeWidth: 4, align: 'right' })
+      .setOrigin(1, 0)
       .setDepth(DEPTH.floor + 2);
 
     L.beds.forEach((b, i) => {
@@ -177,7 +178,7 @@ export class WardScene extends Phaser.Scene {
     this.gHighlight = this.add.graphics().setDepth(DEPTH.prompt);
     this.doctor = sprite(this, 'doc:down:0');
     this.stars = sprite(this, 'daze:0').setDepth(DEPTH.prompt).setVisible(false);
-    this.carry = sprite(this, 'item:lint').setVisible(false);
+    this.carry = sprite(this, 'item:bandage').setVisible(false);
     this.carryCount = text(this, 0, 0, '', { size: 16, color: 'paper0', stroke: 'ink', strokeWidth: 4, bold: true }).setDepth(DEPTH.prompt);
     this.device = sprite(this, 'cup:0:0').setVisible(false);
     this.prompt = text(this, 0, 0, '', { size: 17, color: 'paper0', stroke: 'ink', strokeWidth: 5 }).setOrigin(0.5, 1).setDepth(DEPTH.prompt);
@@ -355,7 +356,7 @@ export class WardScene extends Phaser.Scene {
           else this.say(`${SAY.gaveUpQueue} ${e.fee} fr`, 20, 40, 'bad');
           break;
         case 'take':
-          if (e.what === 'lint') sfx('cloth');
+          if (e.what === 'bandage') sfx('cloth');
           else if (e.what === 'bottle') {
             sfx('boil');
             sfx('pour', { vol: 0.6 });
@@ -849,8 +850,8 @@ export class WardScene extends Phaser.Scene {
         skin: pt.skin,
         hair: e.type === 'drummer' ? 'hairBrown' : pt.hair,
         moustache: pt.moustache && e.type !== 'drummer',
-        build: e.type === 'anaemic' ? 'thin' : e.type === 'drummer' ? 'small' : 'normal',
-        pallor: e.type === 'anaemic' ? 2 : 0,
+        build: e.type === 'anemic' ? 'thin' : e.type === 'drummer' ? 'small' : 'normal',
+        pallor: e.type === 'anemic' ? 2 : 0,
         eyes: e.type === 'nervous' ? 'wide' : 'open',
         sweat: e.left < 12,
         cold: e.cold,
@@ -874,7 +875,7 @@ function carryTexture(hand: Hand): string | null {
   switch (hand.kind) {
     case 'leech': return handKey(Math.min(3, hand.count), Math.floor(performance.now() / 260) % 2);
     case 'used': return 'item:used';
-    case 'lint': return 'item:lint';
+    case 'bandage': return 'item:bandage';
     case 'bottle': return 'item:bottle';
     case 'bdello': return 'item:bdello';
     case 'stretcher': return 'item:stretcher';
