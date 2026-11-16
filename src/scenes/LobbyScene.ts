@@ -8,6 +8,7 @@ import { COATS } from '../art/sprites';
 import { sfx } from '../audio/audio';
 import { playMusic } from '../audio/music';
 import { fitCamera, text, panel, STAGE } from '../ui/view';
+import { soundButton } from '../ui/sound';
 import { CONFIG } from '../config';
 import { LOBBY, YEAR_TITLE } from '../data/lines';
 import { session } from '../net/client';
@@ -19,6 +20,7 @@ export class LobbyScene extends Phaser.Scene {
 
   create() {
     fitCamera(this);
+    soundButton(this);
     playMusic('title');
     const net = session.get();
     if (!net) return void this.scene.start('together');

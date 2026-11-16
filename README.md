@@ -45,7 +45,7 @@ bigger jar.
 | WASD / arrows | walk (hold **Shift** to run — but every fed leech underfoot is a certain slip, and running into an orderly knocks you down) |
 | E / Space | take, give, apply; hold to pump the bdellometer |
 | Esc | pause |
-| M | mute |
+| M | mute (or click the speaker in the top-right corner) |
 | P / L / C (title page) | play together / leaderboard / credits |
 | Esc (playing together) | leave the game (it carries on without you) |
 

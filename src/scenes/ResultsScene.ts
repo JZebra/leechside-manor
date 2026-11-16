@@ -12,6 +12,7 @@ import type { Report } from '../net/protocol';
 import type { Ward } from '../model/ward';
 import { sfx } from '../audio/audio';
 import { fitCamera, text, panel, onType, STAGE } from '../ui/view';
+import { soundButton } from '../ui/sound';
 import { finishDay } from '../ui/progress';
 import { loadBoard, qualifies, signYear, lastName, rememberName, today, ordinal, NAME_MAX } from '../ui/board';
 
@@ -34,6 +35,7 @@ export class ResultsScene extends Phaser.Scene {
 
   create(data: { ward: Ward; online?: { net: NetClient; report: Report } }) {
     fitCamera(this);
+    soundButton(this, { key: () => !this.entering }); // not while signing the register
     this.entering = false;
     this.signedAt = -1e9;
     const ward = data.ward;

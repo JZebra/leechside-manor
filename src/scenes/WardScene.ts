@@ -11,10 +11,11 @@ import { Ward, type WardEvent, type Target, type Hand, type Doctor } from '../mo
 import type { Patient } from '../model/patient';
 import { BED, WORLD, type Layout, type StationId, type Rect } from '../model/layout';
 import { STAGE_NOTES, VERB, FAIL, SAY, CONTROLS, WARD, PAUSE, ONLINE, type Note } from '../data/lines';
-import { sfx, isMuted, setMuted, audioDebug } from '../audio/audio';
+import { sfx, audioDebug } from '../audio/audio';
 import { playMusic } from '../audio/music';
 import { FLAGS } from '../flags';
 import { fitCamera, text, sprite, place, panel, STAGE, RES } from '../ui/view';
+import { soundButton } from '../ui/sound';
 import { applySnapshot, type PatientRecord } from '../net/snapshot';
 import { session, type NetClient } from '../net/client';
 import type { Report, Seat } from '../net/protocol';
@@ -114,7 +115,7 @@ export class WardScene extends Phaser.Scene {
   private gHighlight!: Phaser.GameObjects.Graphics;
   private gTrail!: Phaser.GameObjects.Graphics;
   private prompt!: Phaser.GameObjects.Text;
-  private hud!: { clock: Phaser.GameObjects.Text; money: Phaser.GameObjects.Text; jar: Phaser.GameObjects.Text; banner: Phaser.GameObjects.Text; jarLabel: Phaser.GameObjects.Text; salt: Phaser.GameObjects.Text; queue: Phaser.GameObjects.Text; mute: Phaser.GameObjects.Text };
+  private hud!: { clock: Phaser.GameObjects.Text; money: Phaser.GameObjects.Text; jar: Phaser.GameObjects.Text; banner: Phaser.GameObjects.Text; jarLabel: Phaser.GameObjects.Text; salt: Phaser.GameObjects.Text; queue: Phaser.GameObjects.Text };
   private notes: Note[] = [];
   private noteView: Phaser.GameObjects.Container | null = null;
   private noteShownAt = 0;
@@ -298,20 +299,21 @@ export class WardScene extends Phaser.Scene {
 
   private buildHud() {
     const g = this.add.graphics().setDepth(DEPTH.hud);
-    panel(g, 996, 9, 270, 54, 'paper1');
+    panel(g, 936, 9, 330, 54, 'paper1');
+    g.fillStyle(hex('paper3')).fillRect(1203, 18, P, 36); // a rule before the sound button
     const jar = this.L.stations.jar.box;
     const bucket = this.L.stations.bucket.box;
     this.hud = {
-      clock: text(this, 1012, 36, '8:00', { font: 'display', size: 34 }).setOrigin(0, 0.5).setDepth(DEPTH.hud),
-      money: text(this, 1130, 36, '0 fr', { font: 'display', size: 28, color: 'red1' }).setOrigin(0.5).setDepth(DEPTH.hud),
-      jar: text(this, 1252, 36, '8', { font: 'display', size: 28 }).setOrigin(1, 0.5).setDepth(DEPTH.hud),
+      clock: text(this, 952, 36, '8:00', { font: 'display', size: 34 }).setOrigin(0, 0.5).setDepth(DEPTH.hud),
+      money: text(this, 1070, 36, '0 fr', { font: 'display', size: 28, color: 'red1' }).setOrigin(0.5).setDepth(DEPTH.hud),
+      jar: text(this, 1192, 36, '8', { font: 'display', size: 28 }).setOrigin(1, 0.5).setDepth(DEPTH.hud),
       banner: text(this, 600, 36, '', { size: 19, color: 'paper0', stroke: 'ink', strokeWidth: 5, align: 'center' }).setOrigin(0.5).setDepth(DEPTH.hud),
       jarLabel: text(this, (jar.x + jar.w / 2) * P, (jar.y + 17.5) * P, '8', { font: 'display', size: 24 }).setOrigin(0.5).setDepth(DEPTH.world + 200),
       salt: text(this, (bucket.x + 10) * P, (bucket.y + 20) * P, '', { size: 14, italic: true, color: 'linen1', stroke: 'ink', strokeWidth: 4, align: 'center' }).setOrigin(0.5, 0).setDepth(DEPTH.overlay),
       queue: text(this, 6 * P, 30 * P, WARD.queue, { size: 15, italic: true, color: 'paper0', stroke: 'ink', strokeWidth: 4 }).setDepth(DEPTH.overlay),
-      mute: text(this, 1262, 72, '', { size: 14, italic: true, color: 'paper2', stroke: 'ink', strokeWidth: 3 }).setOrigin(1, 0).setDepth(DEPTH.hud),
     };
-    sprite(this, 'item:leech', 1176 / P, 25 / P).setDepth(DEPTH.hud);
+    sprite(this, 'item:leech', 1116 / P, 25 / P).setDepth(DEPTH.hud);
+    soundButton(this, { x: 1257, y: 18, depth: DEPTH.note + 1 }); // above the notes and the pause, so it works there too
     if (this.online) text(this, 1262, 690, ONLINE.room(this.online.net.code), { size: 15, italic: true, color: 'paper2', stroke: 'ink', strokeWidth: 3 }).setOrigin(1, 0).setDepth(DEPTH.hud);
     for (let i = 0; i < 6; i++) {
       const ay = 38 + i * 26;
@@ -335,10 +337,6 @@ export class WardScene extends Phaser.Scene {
     this.events.once('shutdown', () => window.removeEventListener('keydown', onKey));
     kb.on('keydown-ESC', () => (this.online ? this.toggleLeave() : this.togglePause()));
     kb.on('keydown-P', () => !this.online && this.togglePause());
-    kb.on('keydown-M', () => {
-      setMuted(!isMuted());
-      sfx('click');
-    });
     kb.on('keydown-R', () => {
       if (this.paused) this.scene.restart({ day: this.dayIndex });
     });
@@ -819,7 +817,6 @@ export class WardScene extends Phaser.Scene {
     this.hud.money.setText(`${ward.shift.money} fr`);
     this.hud.jar.setText(String(s.jar));
     this.hud.jarLabel.setText(String(s.jar));
-    this.hud.mute.setText(isMuted() ? WARD.soundOff : '');
     const secs = (n: number) => `${Math.max(0, Math.ceil(n))} s`;
     let banner = '';
     if (!s.deliveries) banner = WARD.noDeliveries;

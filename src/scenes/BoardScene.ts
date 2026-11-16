@@ -5,6 +5,7 @@ import { CONFIG } from '../config';
 import { hex } from '../art/palette';
 import { sfx } from '../audio/audio';
 import { fitCamera, text, panel, STAGE } from '../ui/view';
+import { soundButton } from '../ui/sound';
 import { loadBoard, BOARD_SIZE } from '../ui/board';
 import { REGISTER } from '../data/lines';
 
@@ -15,6 +16,7 @@ export class BoardScene extends Phaser.Scene {
 
   create() {
     fitCamera(this);
+    soundButton(this);
     this.add.rectangle(0, 0, STAGE.w, STAGE.h, hex('ink')).setOrigin(0);
     const g = this.add.graphics();
     panel(g, 60, 36, 1160, 648, 'paper1');

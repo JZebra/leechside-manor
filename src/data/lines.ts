@@ -39,6 +39,12 @@ export const COLD_LABEL: Record<number, string> = {
 
 // ── The title page ───────────────────────────────────────────────────────────
 
+// The speaker in the corner of every screen: what a click on it would do.
+export const SOUND = {
+  mute: 'Mute (M)',
+  unmute: 'Unmute (M)',
+};
+
 export const TITLE = {
   subtitle: 'Val-de-Grâce, Paris · three years under Broussais, 1828–1832',
   intro:
@@ -49,8 +55,6 @@ export const TITLE = {
   begin: (year: number) => `Press E or Space to begin ${year}`,
   best: (francs: number) => `best ${francs} fr`,
   locked: 'not yet',
-  soundOn: 'Sound on (M)',
-  soundOff: 'Sound off (M)',
   menu: 'P — Play together   ·   L — Leaderboard   ·   C — Credits',
   byline: 'originally created for Ludum Dare 60 · John Shen',
 };
@@ -207,7 +211,6 @@ export const WARD = {
   noDeliveries: 'No deliveries — salt fed leeches to reuse them',
   nextJar: (inSeconds: string) => `Next jar of leeches in ${inSeconds}`,
   salting: (count: number, inSeconds: string) => `${count} disgorging\nback in ${inSeconds}`,
-  soundOff: 'sound off (M)',
   press: (verb: string) => `E  ${verb}`, // the prompt over the doctor's head
   hold: (verb: string) => `${verb} E`, // …for the bdellometer
   pumping: 'Pumping…',

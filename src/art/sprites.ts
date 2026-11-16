@@ -457,7 +457,28 @@ function bubble(draw: (p: Pix) => void, ink: PaletteKey = 'paper0') {
   draw(p);
   return p.outline('ink');
 }
+// The sound button in the corner of every screen: a paper button (it reads on paper and on
+// ink) with a speaker on it, and its waves, or a red cross.
+function speaker(on: boolean) {
+  const p = new Pix(15, 13);
+  p.rect(0, 0, 15, 13, 'ink');
+  p.rect(1, 1, 13, 11, 'paper0');
+  p.rect(1, 11, 13, 1, 'paper3'); // its lower edge in shadow
+  for (const [x, y] of [[0, 0], [14, 0], [0, 12], [14, 12]]) p.set(x, y, null); // rounded corners
+  p.rect(2, 5, 2, 3, 'ink'); // the box
+  p.rect(4, 4, 1, 5, 'ink').rect(5, 3, 1, 7, 'ink').rect(6, 2, 1, 9, 'ink'); // the cone
+  if (on) {
+    p.set(8, 4, 'ink').rect(9, 5, 1, 3, 'ink').set(8, 8, 'ink');
+    p.set(10, 2, 'ink').set(11, 3, 'ink').rect(12, 4, 1, 5, 'ink').set(11, 9, 'ink').set(10, 10, 'ink');
+  } else {
+    for (let i = 0; i < 5; i++) p.set(8 + i, 4 + i, 'red2').set(12 - i, 4 + i, 'red2');
+  }
+  return p;
+}
+
 const ICONS: Record<string, () => Pix> = {
+  'icon:sound:on': () => speaker(true),
+  'icon:sound:off': () => speaker(false),
   'icon:ready': () => bubble((p) => {
     p.ellipse(6, 5, 3.6, 3, 'linen1');
     p.ellipse(6, 5, 1.4, 1.2, 'paper3');

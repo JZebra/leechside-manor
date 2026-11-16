@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import { hex } from '../art/palette';
 import { CONTROLS, GAME_TITLE, TITLE } from '../data/lines';
-import { sfx, isMuted, setMuted } from '../audio/audio';
+import { sfx } from '../audio/audio';
 import { playMusic } from '../audio/music';
 import { fitCamera, text, panel, STAGE } from '../ui/view';
+import { soundButton } from '../ui/sound';
 import { loadProgress } from '../ui/progress';
 import { CONFIG } from '../config';
 import { FLAGS } from '../flags';
@@ -63,11 +64,10 @@ export class TitleScene extends Phaser.Scene {
     choose(chosen);
 
     text(this, x, 584, CONTROLS.replace(/  ·  /g, '\n'), { size: 16, color: 'wood3', lineSpacing: 1 });
-    const mute = text(this, x + w, 584, '', { size: 16, color: 'wood3', align: 'right' }).setOrigin(1, 0);
-    const showMute = () => mute.setText(isMuted() ? TITLE.soundOff : TITLE.soundOn);
-    showMute();
     text(this, x, 668, TITLE.menu, { font: 'display', size: 20, color: 'wood3' });
     text(this, x + w, 646, TITLE.byline, { size: 15, italic: true, color: 'paper4' }).setOrigin(1, 0); // its own line: the menu is long
+
+    soundButton(this);
 
     const start = () => {
       sfx('page');
@@ -95,10 +95,5 @@ export class TitleScene extends Phaser.Scene {
     kb.on('keydown-THREE', () => choose(2));
     kb.on('keydown-UP', () => choose(Math.max(0, chosen - 1)));
     kb.on('keydown-DOWN', () => choose(Math.min(progress.unlocked, chosen + 1)));
-    kb.on('keydown-M', () => {
-      setMuted(!isMuted());
-      showMute();
-      sfx('click');
-    });
   }
 }

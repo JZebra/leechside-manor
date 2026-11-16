@@ -4,6 +4,7 @@ import Phaser from 'phaser';
 import { hex } from '../art/palette';
 import { sfx } from '../audio/audio';
 import { fitCamera, text, panel, STAGE, type TextOpts } from '../ui/view';
+import { soundButton } from '../ui/sound';
 import { FINAL_REMARK } from '../data/lines';
 
 export class EpilogueScene extends Phaser.Scene {
@@ -13,6 +14,7 @@ export class EpilogueScene extends Phaser.Scene {
 
   create(data: { francs: number }) {
     fitCamera(this);
+    soundButton(this);
     this.add.rectangle(0, 0, STAGE.w, STAGE.h, hex('ink')).setOrigin(0);
     const g = this.add.graphics();
     panel(g, 90, 36, 1100, 648, 'paper1');

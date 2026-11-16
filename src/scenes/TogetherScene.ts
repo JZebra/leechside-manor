@@ -6,6 +6,7 @@ import { hex } from '../art/palette';
 import { sfx } from '../audio/audio';
 import { playMusic } from '../audio/music';
 import { fitCamera, text, panel, onType, STAGE } from '../ui/view';
+import { soundButton } from '../ui/sound';
 import { lastName, rememberName } from '../ui/board';
 import { TOGETHER } from '../data/lines';
 import { NetClient, SERVER, session, troubleOf } from '../net/client';
@@ -24,6 +25,7 @@ export class TogetherScene extends Phaser.Scene {
 
   create() {
     fitCamera(this);
+    soundButton(this, { key: () => false }); // every letter is typing here: click it instead
     playMusic('title');
     session.set(null);
     this.add.rectangle(0, 0, STAGE.w, STAGE.h, hex('ink')).setOrigin(0);
