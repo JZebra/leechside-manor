@@ -1,6 +1,8 @@
-// The multiplayer server: a Cloudflare Worker with two kinds of Durable Object.
-//   npm run server         — run it locally (http://localhost:8787)
+// The server: a Cloudflare Worker with three kinds of Durable Object (the matchmaker, a room
+// per game, the online register).
+//   npm run server         — run it locally (http://localhost:8787; secrets from server/.dev.vars)
 //   npm run server:deploy  — publish it to your Cloudflare account (wrangler login first)
+//   npx wrangler secret put BOARD_ADMIN -c server/wrangler.jsonc — the register's admin key
 {
   "$schema": "../node_modules/wrangler/config-schema.json",
   "name": "leechside-manor",
@@ -11,9 +13,14 @@
   "durable_objects": {
     "bindings": [
       { "name": "ROOMS", "class_name": "RoomObject" },
-      { "name": "MATCHMAKER", "class_name": "Matchmaker" }
+      { "name": "MATCHMAKER", "class_name": "Matchmaker" },
+      { "name": "BOARD", "class_name": "Leaderboard" }
     ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RoomObject", "Matchmaker"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["RoomObject", "Matchmaker"] },
+    { "tag": "v2", "new_sqlite_classes": ["Leaderboard"] }
+  ],
+  "secrets": { "required": ["BOARD_ADMIN"] },
   "observability": { "enabled": true }
 }

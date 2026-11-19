@@ -9,7 +9,8 @@ A frantic, darkly funny time-management game in the Overcooked mould, made for *
 Bleed each soldier just enough — into the green — then bandage the bites. Carry out the
 fainted, salt the fed leeches so they can be used again, keep the hungry ones out of the drain, and
 don't run over the fed ones on the floor. Three years, three shifts — and then the cholera comes.
-Sign the register if your takings make the top ten.
+Sign the register if your takings make the top ten: this browser's, and (when the game has its server)
+the one every doctor signs.
 
 ## The three years
 
@@ -60,7 +61,8 @@ Testing a later year: `http://localhost:5180/?day=3&stage=epidemic&notes=0` (see
 the debug flags).
 
 ```bash
-npm run server     # the multiplayer server, locally (http://localhost:8787)
+cp server/.dev.vars.example server/.dev.vars   # once: the local admin key for the register
+npm run server     # the server (multiplayer and the online register), locally (http://localhost:8787)
 npm run bots -- ABCD 3   # three bot doctors into room ABCD ("match" for quick match)
 ```
 
@@ -72,14 +74,22 @@ npm run sim        # bots play every year through the real model (balance)
 npm run zip        # leechside-manor-itch.zip, ready for an itch.io HTML upload
 ```
 
-### Publishing the multiplayer server
+### Publishing the server
 
-The server is a Cloudflare Worker with Durable Objects (`server/`), and runs on Cloudflare's free
-plan. Once, with your own Cloudflare account:
+The server is a Cloudflare Worker with Durable Objects (`server/`): the rooms for playing together,
+and the online register. It runs on Cloudflare's free plan. Once, with your own Cloudflare account:
 
 ```bash
 npx wrangler login
+openssl rand -hex 32     # an admin key for the register: keep it in your password manager
+npx wrangler secret put BOARD_ADMIN -c server/wrangler.jsonc   # paste it at the prompt
 npm run server:deploy    # prints the address: https://leechside-manor.<you>.workers.dev
+```
+
+To strike a name out of the register (place 1 is the top of that year's board):
+
+```bash
+curl -X DELETE -H "Authorization: Bearer <admin key>" https://leechside-manor.<you>.workers.dev/api/board/1828/3
 ```
 
 Then build the game with that address, so the itch.io copy knows where to find it:
@@ -88,7 +98,8 @@ Then build the game with that address, so the itch.io copy knows where to find i
 VITE_SERVER=https://leechside-manor.<you>.workers.dev npm run zip
 ```
 
-A build without `VITE_SERVER` plays alone as before, and Play together says multiplayer isn't set up.
+A build without `VITE_SERVER` plays alone as before: Play together says multiplayer isn't set up, and
+the register is this browser's alone.
 
 Built with Phaser 3, TypeScript and Vite. All rules live in a pure model (`src/model/`) with no
 Phaser in it; every number is in `src/config.ts`; every sprite is drawn procedurally into a

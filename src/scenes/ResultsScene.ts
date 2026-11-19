@@ -4,17 +4,17 @@
 
 import Phaser from 'phaser';
 import { CONFIG } from '../config';
-import { hex, type PaletteKey } from '../art/palette';
+import { hex, css, type PaletteKey } from '../art/palette';
 import { OUTCOME_LABEL, VERDICT_REMARK, REPORT, REGISTER, ONLINE, LOBBY } from '../data/lines';
 import { COATS } from '../art/sprites';
-import { session, type NetClient } from '../net/client';
+import { session, SERVER, type NetClient } from '../net/client';
 import type { Report } from '../net/protocol';
 import type { Ward } from '../model/ward';
 import { sfx } from '../audio/audio';
 import { fitCamera, text, panel, onType, STAGE } from '../ui/view';
 import { soundButton } from '../ui/sound';
 import { finishDay } from '../ui/progress';
-import { loadBoard, qualifies, signYear, lastName, rememberName, today, ordinal, NAME_MAX } from '../ui/board';
+import { loadBoard, qualifies, signYear, lastName, rememberName, today, ordinal, NAME_MAX, hasTicket, fetchBoard, signOnline } from '../ui/board';
 
 const OUTCOME_COLOUR: Record<string, PaletteKey> = {
   green: 'stamp0',
@@ -28,6 +28,7 @@ const OUTCOME_COLOUR: Record<string, PaletteKey> = {
 export class ResultsScene extends Phaser.Scene {
   private entering = false; // typing a name for the leaderboard: the other keys wait
   private signedAt = -1e9;
+  private visit = 0; // which showing of the report an answer from the server is for
 
   constructor() {
     super('results');
@@ -38,6 +39,7 @@ export class ResultsScene extends Phaser.Scene {
     soundButton(this, { key: () => !this.entering }); // not while signing the register
     this.entering = false;
     this.signedAt = -1e9;
+    this.visit++;
     const ward = data.ward;
     const shift = ward.shift;
     this.add.rectangle(0, 0, STAGE.w, STAGE.h, hex('ink')).setOrigin(0);
@@ -136,9 +138,21 @@ export class ResultsScene extends Phaser.Scene {
       kb.on('keydown-T', () => !idle() && this.scene.start('title'));
     });
 
-    // the leaderboard: sign for this year's top ten
+    // the register: sign for this year's top ten, in this browser and (with a ticket for the
+    // day) online, if the takings make either
     const year = shift.spec.year;
-    if (qualifies(loadBoard().years[String(year)] ?? [], shift.money)) this.signing(year, shift.money, verdict, footer);
+    const here = qualifies(loadBoard().years[String(year)] ?? [], shift.money);
+    const sign = (online: boolean) => this.signing({ day, year, money: shift.money, verdict, here, online }, footer);
+    if (!hasTicket(day)) {
+      if (here) sign(false);
+      return;
+    }
+    const visit = this.visit;
+    fetchBoard().then((b) => {
+      if (visit !== this.visit || !this.sys.isActive()) return; // he's moved on
+      const online = !!b && qualifies(b.years[String(year)] ?? [], shift.money);
+      if (here || online) sign(online);
+    });
   }
 
   // Online: each doctor's share of the day, then back to the room (or away).
@@ -172,7 +186,12 @@ export class ResultsScene extends Phaser.Scene {
   }
 
   // A place on the board: type a name (Enter signs, Esc leaves it unsigned).
-  private signing(year: number, money: number, verdict: string, footer: Phaser.GameObjects.Text) {
+  private signing(
+    s: { day: number; year: number; money: number; verdict: string; here: boolean; online: boolean },
+    footer: Phaser.GameObjects.Text,
+  ) {
+    const { day, year, money, verdict } = s;
+    const visit = this.visit;
     this.entering = true;
     footer.setAlpha(0.35);
     const g = this.add.graphics();
@@ -197,12 +216,22 @@ export class ResultsScene extends Phaser.Scene {
       }
       const who = name.trim() || REGISTER.anonymous;
       rememberName(who);
-      const entry = { name: who, money, verdict, date: today() };
-      const at = signYear(year, entry);
       name = who;
       draw();
-      hint.setText(at >= 0 ? REGISTER.signed(ordinal(at + 1), year) : REGISTER.unsigned).setColor('#2e4a2c');
-      sfx('scratch');
+      const report = (words: string, ok: boolean) => {
+        hint.setText(words).setColor(css(ok ? 'stamp0' : 'red2'));
+        if (ok) sfx('scratch');
+      };
+      const local = s.here ? signYear(year, { name: who, money, verdict, date: today() }) : -1;
+      const localWords = (at: number) => (SERVER ? REGISTER.signedHere : REGISTER.signed)(ordinal(at + 1), year);
+      if (!s.online) return report(local >= 0 ? localWords(local) : REGISTER.unsigned, local >= 0);
+      hint.setText(REGISTER.sending);
+      signOnline(day, who, money).then((at) => {
+        if (visit !== this.visit || !this.sys.isActive()) return;
+        if (at !== null && at >= 0) report(REGISTER.signed(ordinal(at + 1), year), true);
+        else if (local >= 0) report(localWords(local), true);
+        else report(at === null ? REGISTER.unreachable : REGISTER.unsigned, false);
+      });
     };
     onType(this, (e) => {
       if (!this.entering) return;

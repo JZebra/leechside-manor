@@ -8,6 +8,7 @@ import { PROTOCOL, type ClientMsg, type LobbyState, type ServerMsg, type Trouble
 export const SERVER: string | null = (() => {
   const set = import.meta.env.VITE_SERVER as string | undefined;
   if (set) return set.replace(/\/$/, '');
+  if (typeof location === 'undefined') return null; // not in a browser (the tests)
   return ['localhost', '127.0.0.1'].includes(location.hostname) ? `http://${location.hostname}:8787` : null;
 })();
 

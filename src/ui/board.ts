@@ -1,36 +1,21 @@
-// The leaderboard: the ten best takings for each year.
-// Kept in this browser's localStorage (the game runs without it: the board is just empty).
+// The leaderboard: the ten best takings for each year, twice over. This browser keeps its
+// own in localStorage (the game runs without it: the board is just empty); when the game
+// has a server (net/client.ts) there's also the register every doctor signs, kept there.
 
-import { CONFIG } from '../config';
+import { SERVER } from '../net/client';
+import { emptyBoard, place, tidyBoard, type Board, type BoardEntry } from '../net/board';
+
+export { BOARD_SIZE, NAME_MAX, qualifies, type Board, type BoardEntry } from '../net/board';
 
 const KEY = 'lc-board';
 const NAME_KEY = 'lc-name';
-export const BOARD_SIZE = 10;
-export const NAME_MAX = 12;
-
-export interface BoardEntry {
-  name: string;
-  money: number;
-  verdict: string;
-  date: string; // yyyy-mm-dd, when it was played
-}
-
-export interface Board {
-  years: Record<string, BoardEntry[]>; // keyed by year: '1828', '1831', '1832'
-}
-
-const empty = (): Board => ({ years: Object.fromEntries(CONFIG.days.map((d) => [String(d.year), []])) });
 
 export function loadBoard(): Board {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return empty();
-    const b = JSON.parse(raw) as Partial<Board>;
-    const fresh = empty();
-    for (const y of Object.keys(fresh.years)) fresh.years[y] = (b.years?.[y] ?? []).slice(0, BOARD_SIZE);
-    return fresh;
+    return raw ? tidyBoard(JSON.parse(raw)) : emptyBoard();
   } catch {
-    return empty();
+    return emptyBoard();
   }
 }
 
@@ -40,19 +25,6 @@ function save(b: Board) {
   } catch {
     /* storage unavailable */
   }
-}
-
-// Would this score make the board? (Ties go below earlier entries; a day with no takings never does.)
-export const qualifies = (list: BoardEntry[], money: number) => money > 0 && (list.length < BOARD_SIZE || money > list[list.length - 1].money);
-
-// Insert an entry; returns its place (0-based) or -1 if it didn't make the board.
-function place(list: BoardEntry[], e: BoardEntry): number {
-  if (!qualifies(list, e.money)) return -1;
-  let i = list.findIndex((x) => e.money > x.money);
-  if (i < 0) i = list.length;
-  list.splice(i, 0, e);
-  list.length = Math.min(list.length, BOARD_SIZE);
-  return i;
 }
 
 export function signYear(year: number, e: BoardEntry): number {
@@ -80,3 +52,59 @@ export function rememberName(name: string) {
 
 export const today = () => new Date().toISOString().slice(0, 10);
 export const ordinal = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
+
+// ── The online register ──────────────────────────────────────────────────────
+
+const WAIT = 5000; // ms before giving up on the server
+
+async function call<T>(path: string, body?: unknown): Promise<T> {
+  if (!SERVER) throw new Error('unset');
+  const r = await fetch(`${SERVER}${path}`, {
+    method: body === undefined ? 'GET' : 'POST',
+    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(WAIT),
+  });
+  if (!r.ok) throw new Error(String(r.status));
+  return (await r.json()) as T;
+}
+
+// The ticket for the day being worked: asked for when the doors open, spent on signing.
+let ticket: { day: number; id: string } | null = null;
+let asked = 0; // only the latest day's answer counts
+
+export function startDay(day: number | null) {
+  ticket = null;
+  const n = ++asked;
+  if (!SERVER || day === null) return;
+  call<{ ticket: string }>('/api/board/start', { day })
+    .then((r) => {
+      if (n === asked && typeof r.ticket === 'string') ticket = { day, id: r.ticket };
+    })
+    .catch(() => {}); // no server, no ticket: the day can still go in this browser's register
+}
+
+export const hasTicket = (day: number) => ticket?.day === day;
+
+// Everyone's register, or null if it can't be had.
+export async function fetchBoard(): Promise<Board | null> {
+  try {
+    return tidyBoard(await call<unknown>('/api/board'));
+  } catch {
+    return null;
+  }
+}
+
+// Sign the online register for the day just worked: the place (0-based, -1 off the board),
+// or null if it couldn't be signed.
+export async function signOnline(day: number, name: string, money: number): Promise<number | null> {
+  if (!hasTicket(day)) return null;
+  const id = ticket!.id;
+  ticket = null;
+  try {
+    const r = await call<{ place?: number }>('/api/board/sign', { ticket: id, name, money });
+    return typeof r.place === 'number' ? r.place : null;
+  } catch {
+    return null;
+  }
+}

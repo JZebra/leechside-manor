@@ -176,8 +176,13 @@ export class Shift {
     this.money += amount;
   }
 
-  verdict(): 'APPROVED' | 'NOTED' | 'REPRIMAND' {
-    const v = this.thresholds;
-    return this.money >= v.approved ? 'APPROVED' : this.money >= v.noted ? 'NOTED' : 'REPRIMAND';
+  verdict(): Verdict {
+    return verdictFor(this.thresholds, this.money);
   }
 }
+
+export type Verdict = 'APPROVED' | 'NOTED' | 'REPRIMAND';
+
+// Broussais's verdict on a day's takings, given his lines for it.
+export const verdictFor = (v: { approved: number; noted: number }, money: number): Verdict =>
+  money >= v.approved ? 'APPROVED' : money >= v.noted ? 'NOTED' : 'REPRIMAND';

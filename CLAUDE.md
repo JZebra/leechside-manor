@@ -26,7 +26,8 @@ The design brief is `BRIEF.md`.
 - `npm run build` — typecheck + static build to `dist/` (`base: './'` for itch.io)
 - `npm run zip` — `leechside-manor-itch.zip` with index.html at the root (`VITE_SERVER=https://…` to point
   the build at the deployed multiplayer server; without it, Play together says it isn't set up)
-- `npm run server` — the multiplayer server locally (wrangler dev, :8787; launch config "server").
+- `npm run server` — the server locally (wrangler dev, :8787; launch config "server"; the admin key
+  from `server/.dev.vars`, copied from `.dev.vars.example`).
   `npm run server:check` typechecks it; `npm run server:deploy` publishes it (needs `wrangler login`)
 - `npm run bots -- ABCD 3` — bot doctors join room ABCD (or `match`) and work the ward; `BOT_SECONDS`
   makes them leave, `BOT_DEBUG` prints their takings every few seconds
@@ -49,21 +50,27 @@ The design brief is `BRIEF.md`.
   collision, slips; targeting; the hand; beds and queue; floor leeches, escapes, salting; orderlies),
   `layout.ts` (the two floor plans in art px: beds, stations with sprite box / footprint / reach rect,
   orderly routes).
-- `src/net/` — playing together. `protocol.ts` (every message, both ways; bump `PROTOCOL` when either
+- `src/net/` — playing together, and the online register. `protocol.ts` (every message, both ways; bump `PROTOCOL` when either
   side changes), `snapshot.ts` (the ward as the server sends it: records of men once, state each time;
   `applySnapshot` pours it into the browser's mirror Ward), `room.ts` (one game's lobby, countdown, the
   ward at 30 ticks/s and snapshots at 15/s, the report — pure, tested in `tests/net.test.ts`),
-  `client.ts` (browser only: the WebSocket, the server address, holding messages across scene changes).
+  `client.ts` (browser only: the WebSocket, the server address, holding messages across scene changes),
+  `board.ts` (the register's book, pure, tested in `tests/register.test.ts`: top 10 per year, tickets good
+  once and not before the day could have been worked, takings capped at every arrival bled green —
+  180 / 240 / 228 — the verdict and name done server-side).
 - `server/` — the Cloudflare Worker: `/api/create`, `/api/match`, `/api/room/:code` (WebSocket); the
-  Matchmaker Durable Object (codes, public rooms, quick-match seats pencilled in for 15 s) and a
-  RoomObject per game that wraps `src/net/room.ts`. Its tsconfig includes `src/model`, `src/net`,
+  Matchmaker Durable Object (codes, public rooms, quick-match seats pencilled in for 15 s), a
+  RoomObject per game that wraps `src/net/room.ts`, and the Leaderboard (`/api/board`, `/start`, `/sign`;
+  `DELETE /api/board/:year/:place` with `Authorization: Bearer` the `BOARD_ADMIN` secret). Its tsconfig includes `src/model`, `src/net`,
   `src/config.ts` and `src/data` — keep those free of DOM and Phaser.
 - `src/scenes/` — Phaser: Boot (textures), Title (BnF Fr. 127 miniature: Galerius eaten by worms; year
   select; L leaderboard, C credits), Ward (input → model → drawing), Results (signing the register),
   Epilogue (after 1832: what really happened, in plain English), Board (the leaderboard), Credits,
   Together (name; quick match / private / join by code), Lobby (the room before the doors open).
 - `src/ui/board.ts` — the leaderboard (playing alone): top 10 per year (a day must earn something to sign), in localStorage
-  (`lc-board`, last name in `lc-name`); local to the browser, not online.
+  (`lc-board`, last name in `lc-name`), and the online register when there's a server: the ward asks for a
+  ticket when the doors open (`startDay`; none with `?stage`/`?fast`), the report signs both if the
+  takings make either, the Board shows everyone's (Tab: this browser's). Without a server, local only.
 - `src/art/` — `palette.ts` (Thirty Leeches palette + additions), `pix.ts` (palette-locked buffer),
   `sprites.ts` (every sprite drawn procedurally and registered as a texture).
 - `src/audio/` — Thirty Leeches' sound system: file → filtered noise → jsfxr; `sounds.ts` lists them.

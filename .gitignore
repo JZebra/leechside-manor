@@ -4,3 +4,6 @@ dist
 .DS_Store
 server/worker-configuration.d.ts
 .wrangler
+
+# local secrets for wrangler dev (server/.dev.vars)
+.dev.vars

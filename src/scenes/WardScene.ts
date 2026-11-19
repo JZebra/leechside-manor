@@ -16,6 +16,7 @@ import { playMusic } from '../audio/music';
 import { FLAGS } from '../flags';
 import { fitCamera, text, sprite, place, panel, STAGE, RES } from '../ui/view';
 import { soundButton } from '../ui/sound';
+import { startDay } from '../ui/board';
 import { applySnapshot, type PatientRecord } from '../net/snapshot';
 import { session, type NetClient } from '../net/client';
 import type { Report, Seat } from '../net/protocol';
@@ -160,6 +161,8 @@ export class WardScene extends Phaser.Scene {
       ? new Ward(o.seed, o.day, { doctors: o.seats.length, ward: CONFIG.multi.ward }) // a mirror of the server's
       : new Ward(FLAGS.seed ?? String(Date.now()), this.dayIndex);
     (window as unknown as { ward: Ward }).ward = this.ward;
+    // a ticket for the online register (not for a day cut short or sped up with ?stage / ?fast)
+    if (!o) startDay(FLAGS.stage || FLAGS.fast !== 1 ? null : this.dayIndex);
     this.t = 0;
     this.notes = [];
     this.noteView = null;
